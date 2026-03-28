@@ -1,1 +1,0 @@
-# Application_mobile_vikazim
