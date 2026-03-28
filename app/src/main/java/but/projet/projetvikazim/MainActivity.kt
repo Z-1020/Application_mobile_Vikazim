@@ -12,11 +12,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import but.projet.projetvikazim.ui.theme.Application_mobile_VikazimTheme
 
@@ -42,13 +44,23 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun Main(modifier: Modifier){
     var etatPage: MutableState<EtatPage> = remember { mutableStateOf<EtatPage>(EtatPage.Vue) }
+    var sessionConnection: SessionConnection = SessionConnection()
 
-    Column() {
-        when(etatPage.value){
-            EtatPage.Vue -> ProfileInformation(modifier)
-            EtatPage.ListeRequetes -> ListeRequetesPage()
+    if(sessionConnection.apiToken==""){
+        Column() {
+            var isSignUp: MutableState<Boolean> = remember { mutableStateOf<Boolean>(false) }
+
+            ConnectionForm(sessionConnection)
         }
-        PageNavbar(etatPage = etatPage)
+    } else {
+        Column() {
+            when (etatPage.value) {
+                EtatPage.Vue -> ProfileInformation(modifier)
+                EtatPage.ListeRequetes -> ListeRequetesPage()
+            }
+
+            PageNavbar(etatPage = etatPage)
+        }
     }
 }
 
@@ -114,3 +126,43 @@ fun ProfileInformationPreview() {
     }
 }
 
+@Composable
+fun ConnectionForm(sessionConnection: SessionConnection){
+    val isSignUpForm: MutableState<Boolean> = remember { mutableStateOf(false) }
+    if(isSignUpForm.value){
+        Text("Inscription")
+
+
+        Column() {
+            Button({isSignUpForm.value=false}) {
+                Text("Se connecter")
+            }
+        }
+    } else {
+        Column() {
+            Text("Connexion")
+            TextField(
+                value = sessionConnection.username,
+                onValueChange = { sessionConnection.username = it},
+                label = { Text("Nom d'utilisateur") },
+                placeholder = { Text("") }
+            )
+            TextField(
+                value = sessionConnection.password,
+                onValueChange = { sessionConnection.password = it},
+                label = { Text("Mot de passe") },
+                placeholder = { Text("") },
+                visualTransformation = PasswordVisualTransformation()
+
+            )
+            Button({}) {
+                Text("Se connecter")
+            }
+
+            Button({isSignUpForm.value=true}) {
+                Text("S'inscrire")
+            }
+        }
+    }
+
+}
