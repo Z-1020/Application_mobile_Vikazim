@@ -21,9 +21,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import but.projet.projetvikazim.ui.theme.Application_mobile_VikazimTheme
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
 
-val baseUrl: String = "https://devmobile.nathanaelheyberger.fr";
+val baseUrl: String = "https://devmobile.nathanaelheyberger.fr/api";
 
 
 class MainActivity : ComponentActivity() {
@@ -45,8 +48,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun Main(modifier: Modifier){
     var etatPage: MutableState<EtatPage> = remember { mutableStateOf<EtatPage>(EtatPage.Vue) }
-    var sessionConnection: SessionConnection = SessionConnection()
-
+    val sessionConnection = remember { SessionConnection() }
     if(sessionConnection.apiToken==""){
         Column() {
             var isSignUp: MutableState<Boolean> = remember { mutableStateOf<Boolean>(false) }
@@ -169,9 +171,17 @@ fun ConnectionForm(sessionConnection: SessionConnection){
             )
             Button({
                 scope.launch {
-                    val result = sessionConnection.login(baseUrl+"/login")
-                    if(!result.getBoolean("success")){
-                        errorMessage.value=result.getString("message")
+                    val result = withContext(Dispatchers.IO) {
+                        println("début")
+                        sessionConnection.login(baseUrl + "/login")  // retourné automatiquement
+
+
+                    }
+                    println(result.toString())
+                    if (!result.getBoolean("success")) {
+                        errorMessage.value = result.getString("message")
+                    } else {
+                        sessionConnection.apiToken = result.getString("token")
                     }
                 }
             }) {

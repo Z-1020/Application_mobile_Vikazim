@@ -10,8 +10,8 @@ class APIConnection {
     fun fetch(urlString: String, methods: String, jsonObject: JSONObject?): String {
         val url = URL(urlString)
         val conn = url.openConnection() as HttpsURLConnection
-        conn.connectTimeout = 3000
-        conn.readTimeout = 1000
+        conn.connectTimeout = 5000
+        conn.readTimeout = 5000
         conn.doInput = true
         conn.setRequestProperty("Accept","application/json")
         conn.requestMethod = methods
@@ -26,6 +26,7 @@ class APIConnection {
         val stream = if (conn.responseCode in 200..299) conn.inputStream else conn.errorStream
         val response = stream.bufferedReader().readText()
         conn.disconnect()
+        println("fin")
         return response
     }
 }

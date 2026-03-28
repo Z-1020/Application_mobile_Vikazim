@@ -19,9 +19,7 @@ class SessionConnection {
         val api = APIConnection()
         val response = api.fetch(urlString, "POST", json)
         val result = JSONObject(response)
-        if(result.get("success")=="true") {
-            apiToken = result.get("token").toString()
-        }
+
         return result
     }
 }
