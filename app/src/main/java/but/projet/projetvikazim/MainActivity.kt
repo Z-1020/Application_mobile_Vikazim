@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -24,6 +25,7 @@ import but.projet.projetvikazim.ui.theme.Application_mobile_VikazimTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONException
 import org.json.JSONObject
 
 val baseUrl: String = "https://devmobile.nathanaelheyberger.fr/api";
@@ -142,8 +144,82 @@ fun ConnectionForm(sessionConnection: SessionConnection){
     if(isSignUpForm.value){
 
         Column() {
-            Text("Inscription")
+            val username = remember { mutableStateOf("") }
+            val password = remember { mutableStateOf("") }
+            val passwordConfirmation = remember { mutableStateOf("") }
+            val surname = remember { mutableStateOf("") }
+            val name = remember { mutableStateOf("") }
+            val address = remember { mutableStateOf("") }
+            val phone = remember { mutableStateOf("") }
+            val isLicensed = remember { mutableStateOf(false) }
+            val licenseNumber = remember { mutableStateOf("") }
+            val chipNumber = remember { mutableStateOf("") }
 
+
+            Text("Inscription")
+            TextField(
+                value = username.value,
+                onValueChange = { username.value = it},
+                label = { Text("Nom d'utilisateur") },
+                placeholder = { Text("") }
+            )
+            TextField(
+                value = password.value,
+                onValueChange = { password.value = it},
+                label = { Text("Mot de passe") },
+                placeholder = { Text("") },
+                visualTransformation = PasswordVisualTransformation()
+            )
+            TextField(
+                value = passwordConfirmation.value,
+                onValueChange = { passwordConfirmation.value = it},
+                label = { Text("Confirmation mot de passe") },
+                placeholder = { Text("") },
+                visualTransformation = PasswordVisualTransformation()
+            )
+            TextField(
+                value = surname.value,
+                onValueChange = { surname.value = it},
+                label = { Text("Prénom") },
+                placeholder = { Text("") }
+            )
+            TextField(
+                value = name.value,
+                onValueChange = { name.value = it},
+                label = { Text("Nom") },
+                placeholder = { Text("") }
+            )
+            TextField(
+                value = address.value,
+                onValueChange = { address.value = it},
+                label = { Text("Adresse") },
+                placeholder = { Text("") }
+            )
+            TextField(
+                value = phone.value,
+                onValueChange = { phone.value = it},
+                label = { Text("Numéro de Téléphone") },
+                placeholder = { Text("") }
+            )
+            Row(){
+                Checkbox(
+                    checked = isLicensed.value,
+                    onCheckedChange = { isLicensed.value = it }
+                )
+                Text("Je suis licencié")
+            }
+            TextField(
+                value = licenseNumber.value,
+                onValueChange = { licenseNumber.value = it},
+                label = { Text("Numéro de licence") },
+                placeholder = { Text("") }
+            )
+            TextField(
+                value = chipNumber.value,
+                onValueChange = { chipNumber.value = it},
+                label = { Text("Numéro de puce") },
+                placeholder = { Text("") }
+            )
 
 
 
@@ -171,20 +247,25 @@ fun ConnectionForm(sessionConnection: SessionConnection){
             )
             Button({
                 scope.launch {
-                    val result = withContext(Dispatchers.IO) {
-                        println("début")
-                        sessionConnection.login(baseUrl + "/login")  // retourné automatiquement
+                    try {
+                        val result = withContext(Dispatchers.IO) {
+                            println("début")
+                            sessionConnection.login(baseUrl + "/login")  // retourné automatiquement
 
 
+                        }
+                        println(result.toString())
+                        if (!result.getBoolean("success")) {
+                            errorMessage.value = result.getString("message")
+                        } else {
+                            sessionConnection.apiToken = result.getString("token")
+                        }
+                    } catch (e: JSONException){
+                        e.printStackTrace()
                     }
-                    println(result.toString())
-                    if (!result.getBoolean("success")) {
-                        errorMessage.value = result.getString("message")
-                    } else {
-                        sessionConnection.apiToken = result.getString("token")
-                    }
+
                 }
-            }) {
+            }, enabled = !sessionConnection.password.isEmpty() && !sessionConnection.username.isEmpty()) {
                 Text("Se connecter")
             }
 
