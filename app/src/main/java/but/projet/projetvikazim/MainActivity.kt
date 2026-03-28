@@ -4,7 +4,6 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,12 +16,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import but.projet.projetvikazim.ui.theme.Application_mobile_VikazimTheme
+import kotlinx.coroutines.launch
 
-val baseUrl: String = "devmobile.nathanaelheyberger.fr";
+val baseUrl: String = "https://devmobile.nathanaelheyberger.fr";
 
 
 class MainActivity : ComponentActivity() {
@@ -129,11 +130,22 @@ fun ProfileInformationPreview() {
 @Composable
 fun ConnectionForm(sessionConnection: SessionConnection){
     val isSignUpForm: MutableState<Boolean> = remember { mutableStateOf(false) }
-    if(isSignUpForm.value){
-        Text("Inscription")
+    val scope = rememberCoroutineScope()
+    val errorMessage: MutableState<String> = remember { mutableStateOf("") }
 
+    if(errorMessage.value!=""){
+        Text(errorMessage.value)
+    }
+
+    if(isSignUpForm.value){
 
         Column() {
+            Text("Inscription")
+
+
+
+
+
             Button({isSignUpForm.value=false}) {
                 Text("Se connecter")
             }
@@ -155,7 +167,14 @@ fun ConnectionForm(sessionConnection: SessionConnection){
                 visualTransformation = PasswordVisualTransformation()
 
             )
-            Button({}) {
+            Button({
+                scope.launch {
+                    val result = sessionConnection.login(baseUrl+"/login")
+                    if(!result.getBoolean("success")){
+                        errorMessage.value=result.getString("message")
+                    }
+                }
+            }) {
                 Text("Se connecter")
             }
 
