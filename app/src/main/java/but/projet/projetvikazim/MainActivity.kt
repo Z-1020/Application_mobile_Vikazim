@@ -20,6 +20,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import but.projet.projetvikazim.ui.theme.Application_mobile_VikazimTheme
 
+val baseUrl: String = "devmobile.nathanaelheyberger.fr";
+
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
