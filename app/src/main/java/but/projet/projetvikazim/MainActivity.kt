@@ -208,18 +208,51 @@ fun ConnectionForm(sessionConnection: SessionConnection){
                 )
                 Text("Je suis licencié")
             }
-            TextField(
-                value = licenseNumber.value,
-                onValueChange = { licenseNumber.value = it},
-                label = { Text("Numéro de licence") },
-                placeholder = { Text("") }
-            )
-            TextField(
-                value = chipNumber.value,
-                onValueChange = { chipNumber.value = it},
-                label = { Text("Numéro de puce") },
-                placeholder = { Text("") }
-            )
+
+            val day = remember { mutableStateOf(1) }
+            val month = remember { mutableStateOf(1) }
+            val year = remember { mutableStateOf(2000) }
+
+            Column {
+                Text("Date de naissance")
+
+                Column {
+                    TextField(
+                        value = day.value.toString(),
+                        onValueChange = { day.value = it.toIntOrNull() ?: 1 },
+                        label = { Text("Jour") }
+                    )
+
+                    TextField(
+                        value = month.value.toString(),
+                        onValueChange = { month.value = it.toIntOrNull() ?: 1 },
+                        label = { Text("Mois") }
+                    )
+
+                    TextField(
+                        value = year.value.toString(),
+                        onValueChange = { year.value = it.toIntOrNull() ?: 2000 },
+                        label = { Text("Année") }
+                    )
+                }
+
+                Text("Résultat : ${day.value}/${month.value}/${year.value}")
+            }
+
+            if(isLicensed.value) {
+                TextField(
+                    value = licenseNumber.value,
+                    onValueChange = { licenseNumber.value = it },
+                    label = { Text("Numéro de licence") },
+                    placeholder = { Text("") }
+                )
+                TextField(
+                    value = chipNumber.value,
+                    onValueChange = { chipNumber.value = it },
+                    label = { Text("Numéro de puce") },
+                    placeholder = { Text("") }
+                )
+            }
 
 
 
@@ -276,3 +309,5 @@ fun ConnectionForm(sessionConnection: SessionConnection){
     }
 
 }
+
+
