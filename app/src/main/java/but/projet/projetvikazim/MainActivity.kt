@@ -144,114 +144,134 @@ fun ConnectionForm(sessionConnection: SessionConnection){
     if(isSignUpForm.value){
 
         Column() {
-            val username = remember { mutableStateOf("") }
-            val password = remember { mutableStateOf("") }
-            val passwordConfirmation = remember { mutableStateOf("") }
-            val surname = remember { mutableStateOf("") }
-            val name = remember { mutableStateOf("") }
-            val address = remember { mutableStateOf("") }
-            val phone = remember { mutableStateOf("") }
-            val isLicensed = remember { mutableStateOf(false) }
-            val licenseNumber = remember { mutableStateOf("") }
-            val chipNumber = remember { mutableStateOf("") }
 
 
             Text("Inscription")
             TextField(
-                value = username.value,
-                onValueChange = { username.value = it},
+                value = sessionConnection.username,
+                onValueChange = { sessionConnection.username = it},
                 label = { Text("Nom d'utilisateur") },
                 placeholder = { Text("") }
             )
             TextField(
-                value = password.value,
-                onValueChange = { password.value = it},
+                value = sessionConnection.password,
+                onValueChange = { sessionConnection.password = it},
                 label = { Text("Mot de passe") },
                 placeholder = { Text("") },
                 visualTransformation = PasswordVisualTransformation()
             )
             TextField(
-                value = passwordConfirmation.value,
-                onValueChange = { passwordConfirmation.value = it},
+                value = sessionConnection.passwordConfirmation,
+                onValueChange = { sessionConnection.passwordConfirmation = it},
                 label = { Text("Confirmation mot de passe") },
                 placeholder = { Text("") },
                 visualTransformation = PasswordVisualTransformation()
             )
             TextField(
-                value = surname.value,
-                onValueChange = { surname.value = it},
+                value = sessionConnection.surname,
+                onValueChange = { sessionConnection.surname = it},
                 label = { Text("Prénom") },
                 placeholder = { Text("") }
             )
             TextField(
-                value = name.value,
-                onValueChange = { name.value = it},
+                value = sessionConnection.name,
+                onValueChange = { sessionConnection.name = it},
                 label = { Text("Nom") },
                 placeholder = { Text("") }
             )
             TextField(
-                value = address.value,
-                onValueChange = { address.value = it},
+                value = sessionConnection.email,
+                onValueChange = { sessionConnection.email = it },
+                label = { Text("Email") },
+                placeholder = { Text("") }
+            )
+            TextField(
+                value = sessionConnection.address,
+                onValueChange = { sessionConnection.address = it},
                 label = { Text("Adresse") },
                 placeholder = { Text("") }
             )
             TextField(
-                value = phone.value,
-                onValueChange = { phone.value = it},
+                value = sessionConnection.phone,
+                onValueChange = { sessionConnection.phone = it},
                 label = { Text("Numéro de Téléphone") },
                 placeholder = { Text("") }
             )
             Row(){
                 Checkbox(
-                    checked = isLicensed.value,
-                    onCheckedChange = { isLicensed.value = it }
+                    checked = sessionConnection.isLicensed,
+                    onCheckedChange = { sessionConnection.isLicensed = it }
                 )
                 Text("Je suis licencié")
             }
 
-            val day = remember { mutableStateOf(1) }
-            val month = remember { mutableStateOf(1) }
-            val year = remember { mutableStateOf(2000) }
 
-            Column {
-                Text("Date de naissance")
+            val day   = remember { mutableStateOf("") }
+            val month = remember { mutableStateOf("") }
+            val year  = remember { mutableStateOf("") }
 
-                Column {
-                    TextField(
-                        value = day.value.toString(),
-                        onValueChange = { day.value = it.toIntOrNull() ?: 1 },
-                        label = { Text("Jour") }
-                    )
-
-                    TextField(
-                        value = month.value.toString(),
-                        onValueChange = { month.value = it.toIntOrNull() ?: 1 },
-                        label = { Text("Mois") }
-                    )
-
-                    TextField(
-                        value = year.value.toString(),
-                        onValueChange = { year.value = it.toIntOrNull() ?: 2000 },
-                        label = { Text("Année") }
-                    )
-                }
-
-                Text("Résultat : ${day.value}/${month.value}/${year.value}")
+            val updateBirthdate = {
+                sessionConnection.birthdate = "${year.value}-${month.value.padStart(2, '0')}-${day.value.padStart(2, '0')}"
             }
 
-            if(isLicensed.value) {
+            Text("Date de naissance")
+            Row {
                 TextField(
-                    value = licenseNumber.value,
-                    onValueChange = { licenseNumber.value = it },
+                    modifier = Modifier.weight(1f),
+                    value = day.value,
+                    onValueChange = { if (it.length <= 2 && it.all { c -> c.isDigit() }) { day.value = it; updateBirthdate() } },
+                    label = { Text("Jour") }
+                )
+                TextField(
+                    modifier = Modifier.weight(1f),
+                    value = month.value,
+                    onValueChange = { if (it.length <= 2 && it.all { c -> c.isDigit() }) { month.value = it; updateBirthdate() } },
+                    label = { Text("Mois") }
+                )
+                TextField(
+                    modifier = Modifier.weight(2f),
+                    value = year.value,
+                    onValueChange = { if (it.length <= 4 && it.all { c -> c.isDigit() }) { year.value = it; updateBirthdate() } },
+                    label = { Text("Année") }
+                )
+            }
+
+            if(sessionConnection.isLicensed) {
+                TextField(
+                    value = sessionConnection.licenseNumber,
+                    onValueChange = { sessionConnection.licenseNumber = it },
                     label = { Text("Numéro de licence") },
                     placeholder = { Text("") }
                 )
                 TextField(
-                    value = chipNumber.value,
-                    onValueChange = { chipNumber.value = it },
+                    value = sessionConnection.chipCode,
+                    onValueChange = { sessionConnection.chipCode = it },
                     label = { Text("Numéro de puce") },
                     placeholder = { Text("") }
                 )
+            }
+            Button({
+                scope.launch {
+                    try {
+                        val result = withContext(Dispatchers.IO) {
+                            println("début")
+                            sessionConnection.signup(baseUrl + "/signup")
+
+
+                        }
+                        println(result.toString())
+                        if (!result.getBoolean("success")) {
+                            errorMessage.value = result.getString("message")
+                        } else {
+                            sessionConnection.apiToken = result.getString("token")
+                        }
+                    } catch (e: JSONException){
+                        e.printStackTrace()
+                    }
+
+                }
+            }, enabled = !sessionConnection.password.isEmpty() && !sessionConnection.username.isEmpty()) {
+                Text("S'inscrire")
             }
 
 
@@ -283,7 +303,7 @@ fun ConnectionForm(sessionConnection: SessionConnection){
                     try {
                         val result = withContext(Dispatchers.IO) {
                             println("début")
-                            sessionConnection.login(baseUrl + "/login")  // retourné automatiquement
+                            sessionConnection.login(baseUrl + "/login")
 
 
                         }
