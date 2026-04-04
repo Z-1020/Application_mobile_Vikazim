@@ -1,19 +1,21 @@
 package but.projet.projetvikazim.api
 
 import org.json.JSONObject
-import java.net.HttpURLConnection
 import java.net.URL
 import javax.net.ssl.HttpsURLConnection
 
 
-class APIConnection {
-    fun fetch(urlString: String, methods: String, jsonObject: JSONObject?): String {
+class APIFetcher {
+    fun fetch(urlString: String, methods: String, jsonObject: JSONObject?, token: String?): String {
         val url = URL(urlString)
         val conn = url.openConnection() as HttpsURLConnection
         conn.connectTimeout = 5000
         conn.readTimeout = 5000
         conn.doInput = true
         conn.setRequestProperty("Accept","application/json")
+        if (!token.isNullOrEmpty()) {
+            conn.setRequestProperty("Authorization", "Bearer $token")
+        }
         conn.requestMethod = methods
         if(jsonObject!=null){
             conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8")

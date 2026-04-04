@@ -1,9 +1,8 @@
-package but.projet.projetvikazim
+package but.projet.projetvikazim.api
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import but.projet.projetvikazim.api.APIConnection
 import org.json.JSONObject
 
 class SessionConnection {
@@ -26,7 +25,7 @@ class SessionConnection {
             put("username", username)
             put("password", password)
         }
-        return JSONObject(APIConnection().fetch(urlString, "POST", json))
+        return JSONObject(APIFetcher().fetch(urlString, "POST", json))
     }
 
     fun signup(urlString: String): JSONObject {
@@ -46,6 +45,6 @@ class SessionConnection {
                 put("chip_code", chipCode)
             }
         }
-        return JSONObject(APIConnection().fetch(urlString, "POST", json))
+        return JSONObject(APIFetcher().fetch(urlString, "POST", json))
     }
 }
