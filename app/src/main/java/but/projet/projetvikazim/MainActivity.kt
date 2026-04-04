@@ -14,6 +14,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -27,7 +28,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
 import org.json.JSONException
+import org.json.JSONObject
 
 val baseUrl: String = "https://devmobile.nathanaelheyberger.fr/api";
 
@@ -54,14 +57,21 @@ fun Main(modifier: Modifier){
     val sessionConnection = remember { SessionConnection() }
     if(sessionConnection.apiToken==""){
         Column() {
-            var isSignUp: MutableState<Boolean> = remember { mutableStateOf<Boolean>(false) }
-
             ConnectionForm(sessionConnection)
         }
     } else {
+        val profileController = ProfileController()
+        var profileJsonState = remember { mutableStateOf(JSONObject()) }
+        LaunchedEffect(sessionConnection.apiToken) {
+            if (sessionConnection.apiToken.isNotEmpty()) {
+                profileJsonState.value = withContext(Dispatchers.IO) {
+                    profileController.fetchProfile(baseUrl+"/profile", sessionConnection.apiToken)
+                }
+            }
+        }
         Column() {
             when (etatPage.value) {
-                EtatPage.Vue -> ProfileInformation(modifier)
+                EtatPage.Vue -> ProfileInformation(modifier, profileJsonState.value)
                 EtatPage.ListeRequetes -> ListeRequetesPage()
             }
 
@@ -71,19 +81,37 @@ fun Main(modifier: Modifier){
 }
 
 @Composable
-fun ProfileInformation(modifier: Modifier = Modifier) {
+fun ProfileInformation(modifier: Modifier = Modifier, profileJson: JSONObject) {
+
     Column (modifier = modifier) {
         Text("Profile")
         Column() {
-            Text("Nom d'utilisateur :")
-            Text("Nom :")
-            Text("Prenom :")
-            Text("Date de naissance :")
-            Text("Adresse :")
-            Text("Téléphone :")
-            Text("Adresse mail :")
-            Text("Licence :")
-            Text("Puce :")
+            if (profileJson.length() == 0) {
+                Text("Chargement...")
+            } else {
+                Text("Nom d'utilisateur : " + profileJson.getString("COM_PSEUDO"))
+                Text("Nom : " + profileJson.getString("COM_NOM"))
+                Text("Prenom : " + profileJson.getString("COM_PRENOM"))
+                Text("Date de naissance : " + profileJson.getString("COM_DATE_NAISSANCE"))
+                Text("Adresse : " + profileJson.getString("COM_ADRESSE"))
+                Text("Téléphone : " + profileJson.getString("COM_TELEPHONE"))
+                Text("Adresse mail : " + profileJson.getString("COM_MAIL"))
+                val adherentIsNull = profileJson.isNull("adherent")
+                var license : String
+                var chip : String
+                if(adherentIsNull){
+                    license="Aucune licence"
+                    chip="—"
+                } else {
+                    val adherent = profileJson.getJSONObject("adherent")
+                    license=adherent.getString("ADH_NUM_LICENCIE")
+                    chip=adherent.getString("ADH_NUM_PUCE")
+
+                }
+                Text("Licence : "+license)
+                Text("Puce : "+chip)
+            }
+
         }
 
         Button({
@@ -128,7 +156,8 @@ fun MainPreview() {
 @Composable
 fun ProfileInformationPreview() {
     Application_mobile_VikazimTheme {
-        ProfileInformation()
+        val profileJson = remember { mutableStateOf(JSONObject()) }
+        ProfileInformation(profileJson = profileJson.value)
     }
 }
 
