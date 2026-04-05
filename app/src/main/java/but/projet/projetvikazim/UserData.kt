@@ -1,8 +1,12 @@
 package but.projet.projetvikazim
 
 import android.text.format.DateFormat
+import androidx.room.Entity
 
+
+@Entity(tableName = "users")
 data class UserData(
+    var id : Int,
     var username : String,
     var password : String,
     var confirmPassword : String,
@@ -15,5 +19,6 @@ data class UserData(
     var isLicensed : Boolean,
     var licenseNumber : String,
     var chipCode : String,
+    val isModify: Boolean = false
 
 )
