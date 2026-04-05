@@ -55,28 +55,31 @@ class MainActivity : ComponentActivity() {
 fun Main(modifier: Modifier){
     var etatPage: MutableState<EtatPage> = remember { mutableStateOf<EtatPage>(EtatPage.Vue) }
     val sessionConnection = remember { SessionConnection() }
-    if(sessionConnection.apiToken==""){
-        Column() {
-            ConnectionForm(sessionConnection)
-        }
-    } else {
-        val profileController = ProfileController()
-        var profileJsonState = remember { mutableStateOf(JSONObject()) }
-        LaunchedEffect(sessionConnection.apiToken) {
-            if (sessionConnection.apiToken.isNotEmpty()) {
-                profileJsonState.value = withContext(Dispatchers.IO) {
-                    profileController.fetchProfile(baseUrl+"/profile", sessionConnection.apiToken)
+
+    Column() {
+        when (etatPage.value) {
+            EtatPage.Vue -> {
+                if(sessionConnection.apiToken==""){
+                    Column() {
+                        ConnectionForm(sessionConnection)
+                    }
+                } else {
+                    val profileController = ProfileController()
+                    var profileJsonState = remember { mutableStateOf(JSONObject()) }
+                    LaunchedEffect(sessionConnection.apiToken) {
+                        if (sessionConnection.apiToken.isNotEmpty()) {
+                            profileJsonState.value = withContext(Dispatchers.IO) {
+                                profileController.fetchProfile(baseUrl+"/profile", sessionConnection.apiToken)
+                            }
+                        }
+                    }
+                    ProfileInformation(modifier, profileJsonState.value)
                 }
             }
+            EtatPage.ListeRequetes -> ListeRequetesPage()
         }
-        Column() {
-            when (etatPage.value) {
-                EtatPage.Vue -> ProfileInformation(modifier, profileJsonState.value)
-                EtatPage.ListeRequetes -> ListeRequetesPage()
-            }
 
-            PageNavbar(etatPage = etatPage)
-        }
+        PageNavbar(etatPage = etatPage)
     }
 }
 
