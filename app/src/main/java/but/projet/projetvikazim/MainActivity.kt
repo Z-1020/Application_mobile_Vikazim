@@ -36,7 +36,7 @@ import org.json.JSONException
 import org.json.JSONObject
 
 
-val baseUrl: String = "https://devmobile.nathanaelheyberger.fr/api";
+val baseUrl: String = "https://devmobile.nathanaelheyberger.fr/api"
 
 
 class MainActivity : ComponentActivity() {
@@ -69,7 +69,7 @@ fun Main(modifier: Modifier){
                     }
                 } else {
                     val profileController = ProfileController()
-                    var profileJsonState = remember { mutableStateOf(JSONObject()) }
+                    val profileJsonState = remember { mutableStateOf(JSONObject()) }
                     LaunchedEffect(sessionConnection.apiToken) {
                         if (sessionConnection.apiToken.isNotEmpty()) {
                             profileJsonState.value = withContext(Dispatchers.IO) {
@@ -105,7 +105,6 @@ fun ProfileInformation(
         val name = remember { mutableStateOf(profileJson.getString("COM_NOM")) }
         val surname = remember { mutableStateOf(profileJson.getString("COM_PRENOM")) }
         val birthdate = remember { mutableStateOf(profileJson.getString("COM_DATE_NAISSANCE")) }
-
 
         val address = remember { mutableStateOf(profileJson.getString("COM_ADRESSE")) }
         val phone = remember { mutableStateOf(profileJson.getString("COM_TELEPHONE")) }
@@ -145,18 +144,18 @@ fun ProfileInformation(
             }
 
         } else {
-            var usernameCopy = remember { mutableStateOf(username.value) }
-            var nameCopy = remember { mutableStateOf(name.value) }
-            var surnameCopy = remember { mutableStateOf(surname.value) }
+            val usernameCopy = remember { mutableStateOf(username.value) }
+            val nameCopy = remember { mutableStateOf(name.value) }
+            val surnameCopy = remember { mutableStateOf(surname.value) }
 
-            var birthdateCopy = remember { mutableStateOf(birthdate.value) }
+            val birthdateCopy = remember { mutableStateOf(birthdate.value) }
 
-            var addressCopy = remember { mutableStateOf(address.value) }
-            var phoneCopy = remember { mutableStateOf(phone.value) }
-            var emailCopy = remember { mutableStateOf(email.value) }
+            val addressCopy = remember { mutableStateOf(address.value) }
+            val phoneCopy = remember { mutableStateOf(phone.value) }
+            val emailCopy = remember { mutableStateOf(email.value) }
 
-            var licenseCopy = remember { mutableStateOf(license.value) }
-            var chipCopy = remember { mutableStateOf(chip.value) }
+            val licenseCopy = remember { mutableStateOf(license.value) }
+            val chipCopy = remember { mutableStateOf(chip.value) }
 
             if(license.value=="Aucune licence"){
                 licenseCopy.value=""
@@ -258,7 +257,6 @@ fun ProfileInformation(
                 }
                 val scope = rememberCoroutineScope()
                 Button({
-
                     val json = JSONObject().apply {
                         put("COM_PSEUDO", usernameCopy.value)
                         put("COM_PRENOM", surnameCopy.value)
@@ -314,7 +312,6 @@ fun ProfileInformation(
                                     errorMessage.value = errorString
                                 }
                             }
-
                         } catch (e: JSONException) {
                             e.printStackTrace()
                         }
@@ -323,13 +320,68 @@ fun ProfileInformation(
                     Text("Confirmer")
                 }
             }
+
+            PasswordUpdateForm(profileController, sessionConnection)
+
+
         }
     }
 }
 
 @Composable
+fun PasswordUpdateForm(profileController: ProfileController, sessionConnection: SessionConnection){
+    val actualPassword = remember { mutableStateOf("") }
+    val newPassword = remember { mutableStateOf("") }
+    val newPasswordConfirmation = remember { mutableStateOf("") }
+
+    Text("Modifier le mot de passe")
+    Column() {
+        TextField(
+            value = actualPassword.value,
+            onValueChange = { actualPassword.value = it},
+            label = { Text("Mot de passe actuel") }
+        )
+        TextField(
+            value = newPassword.value,
+            onValueChange = { newPassword.value = it},
+            label = { Text("Nouveau mot de passe") }
+        )
+        TextField(
+            value = newPasswordConfirmation.value,
+            onValueChange = { newPasswordConfirmation.value = it},
+            label = { Text("Confirmation du nouveau mot de passe") }
+        )
+    }
+    val scope = rememberCoroutineScope()
+    Button({
+        val json = JSONObject().apply {
+            put("current_password", actualPassword.value)
+            put("password", newPassword.value)
+            put("password_confirmation", newPasswordConfirmation.value)
+        }
+        scope.launch {
+            try {
+                val result = withContext(Dispatchers.IO) {
+                    profileController.updateProfileInformation(
+                        baseUrl + "/profile/password",
+                        token = sessionConnection.apiToken,
+                        json = json
+                    )
+                }
+            } catch (e: JSONException) {
+                e.printStackTrace()
+            }
+        }
+    }){
+        Text("Modifier le mot de passe")
+    }
+
+
+}
+
+@Composable
 fun PageNavbar(modifier: Modifier = Modifier, etatPage: MutableState<EtatPage>){
-    var pageAvantParametres = remember { mutableStateOf(EtatPage.Vue) }
+    val pageAvantParametres = remember { mutableStateOf(EtatPage.Vue) }
     Row() {
         when(etatPage.value){
             EtatPage.ListeRequetes -> Button({ etatPage.value=EtatPage.Vue }) { Text("Page de Profile") }

@@ -12,4 +12,9 @@ class ProfileController {
         return JSONObject(APIFetcher().fetchWithToken(urlString, "PATCH", json, token))
     }
 
+    fun updatePassword(urlString: String, token: String, json: JSONObject): JSONObject {
+        return JSONObject(APIFetcher().fetchWithToken(urlString, "PATCH", json, token))
+    }
+
+
 }
