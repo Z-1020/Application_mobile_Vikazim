@@ -1,5 +1,6 @@
 package but.projet.projetvikazim
 
+
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -10,6 +11,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -20,6 +23,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import but.projet.projetvikazim.api.SessionConnection
@@ -28,9 +32,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
+
 
 val baseUrl: String = "https://devmobile.nathanaelheyberger.fr/api";
 
@@ -77,6 +81,7 @@ fun Main(modifier: Modifier){
                 }
             }
             EtatPage.ListeRequetes -> ListeRequetesPage()
+            EtatPage.Parametres -> {}
         }
 
         PageNavbar(etatPage = etatPage)
@@ -127,13 +132,21 @@ fun ProfileInformation(modifier: Modifier = Modifier, profileJson: JSONObject) {
 
 @Composable
 fun PageNavbar(modifier: Modifier = Modifier, etatPage: MutableState<EtatPage>){
-
+    var pageAvantParametres = remember { mutableStateOf(EtatPage.Vue) }
     Row() {
         when(etatPage.value){
             EtatPage.ListeRequetes -> Button({ etatPage.value=EtatPage.Vue }) { Text("Page de Profile") }
             EtatPage.Vue -> Button({ etatPage.value=EtatPage.ListeRequetes }) { Text("Liste des requêtes en attentes") }
+            EtatPage.Parametres -> Button({ etatPage.value=pageAvantParametres.value }) { Text("Retour") }
         }
-
+        if(etatPage.value != EtatPage.Parametres){
+            IconButton({
+                pageAvantParametres.value=etatPage.value
+                etatPage.value=EtatPage.Parametres
+            }) {
+                Icon(painter = painterResource(R.drawable.baseline_app_settings_alt_24), contentDescription = "Settings")
+            }
+        }
     }
 
 }
@@ -321,7 +334,19 @@ fun signUp(
                 }
 
             }
-        }, enabled = !sessionConnection.password.isEmpty() && !sessionConnection.username.isEmpty()) {
+        }, enabled = !sessionConnection.password.isEmpty()
+                && !sessionConnection.username.isEmpty()
+                && !sessionConnection.address.isEmpty()
+                && !sessionConnection.email.isEmpty()
+                && !sessionConnection.passwordConfirmation.isEmpty()
+                && !sessionConnection.phone.isEmpty()
+                && !sessionConnection.name.isEmpty()
+                && !sessionConnection.surname.isEmpty()
+                && !sessionConnection.birthdate.isEmpty()
+                && !sessionConnection.username.isEmpty()
+                && !sessionConnection.password.isEmpty()
+                && (!sessionConnection.isLicensed || (!sessionConnection.chipCode.isEmpty() && !sessionConnection.licenseNumber.isEmpty()))
+        ) {
             Text("S'inscrire")
         }
 
