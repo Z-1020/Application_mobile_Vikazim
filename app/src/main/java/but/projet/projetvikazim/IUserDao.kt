@@ -20,7 +20,7 @@ interface IUserDao {
     suspend fun updateUser(user: UserData)
 
     @Query("SELECT * FROM users WHERE isModify = 1")
-    suspend fun getDirtyUsers(): List<UserData>
+    suspend fun getModifyUsers(): List<UserData>
 
     @Query("UPDATE users SET isModify = 0 WHERE username = :username")
     suspend fun markClean(username: String)

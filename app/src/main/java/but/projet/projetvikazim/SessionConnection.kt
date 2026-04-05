@@ -36,7 +36,7 @@ class SessionConnection {
             put("password_confirmation", passwordConfirmation)
             put("surname", surname)
             put("name", name)
-            put("birthdate", birthdate)
+            put("birthdate", DateUtils.displayToApi(birthdate))
             put("address", address)
             put("phone", phone)
             put("email", email)
