@@ -8,4 +8,8 @@ class ProfileController {
         return JSONObject(APIFetcher().fetchWithToken(urlString, "GET", null, token))
     }
 
+    fun updateProfileInformation(urlString: String, token: String, json: JSONObject): JSONObject {
+        return JSONObject(APIFetcher().fetchWithToken(urlString, "PATCH", json, token))
+    }
+
 }
