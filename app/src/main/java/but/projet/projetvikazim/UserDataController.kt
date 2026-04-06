@@ -44,20 +44,25 @@ class UserDataController() {
         }
     }
 
-    suspend fun updateUserData(urlString: String, token: String, context: Context, newJSON: JSONObject): JSONObject {
+    suspend fun updateUserData(
+        urlString: String,
+        token: String,
+        context: Context,
+        newJSON: JSONObject
+    ): JSONObject {
         val dao = AppDatabase.getInstance(context).userDao()
         val result: JSONObject
         val user = UserData(
             id          = 0,
-            username    = newJSON.getString("username"),
-            name        = newJSON.getString("name"),
-            surname     = newJSON.getString("surname"),
-            birthdate   = newJSON.getString("birthdate"),
-            address     = newJSON.getString("address"),
-            phone       = newJSON.getString("phone"),
-            email       = newJSON.getString("email"),
-            licenseNumber = newJSON.optString("license_number", ""),
-            chipCode    = newJSON.optString("chip_code", "")
+            username    = newJSON.getString("COM_PSEUDO"),
+            name        = newJSON.getString("COM_NOM"),
+            surname     = newJSON.getString("COM_PRENOM"),
+            birthdate   = newJSON.getString("COM_DATE_NAISSANCE"),
+            address     = newJSON.getString("COM_ADRESSE"),
+            phone       = newJSON.getString("COM_TELEPHONE"),
+            email       = newJSON.getString("COM_MAIL"),
+            licenseNumber = newJSON.optString("ADH_NUM_LICENCIE", ""),
+            chipCode    = newJSON.optString("ADH_NUM_PUCE", "")
         )
         try {
             dao.insertUserData(user)
@@ -74,15 +79,42 @@ class UserDataController() {
             }
             return result
         } else {
+            val pendingFetchDao = AppDatabase.getInstance(context).pendingRequestDao()
+            pendingFetchDao.insert(
+                request = PendingFetchData(
+                    method = "PATCH",
+                    url = urlString + "/profile",
+                    bodyJson = newJSON.toString()
+                )
+            )
             result = JSONObject()
             result.put("status", "hors-ligne")
             return result
         }
     }
 
-    suspend fun updatePassword(urlString: String, token: String, json: JSONObject): JSONObject {
+    suspend fun updatePassword(
+        urlString: String,
+        token: String,
+        json: JSONObject,
+        isOnline: Boolean,
+        current: Context
+    ): JSONObject {
+        val pendingFetchDao = AppDatabase.getInstance(current).pendingRequestDao()
+
         return withContext(Dispatchers.IO) {
-            profileController.updatePassword(urlString + "/profile/password", token, json)
+            if(isOnline){
+                profileController.updatePassword(urlString + "/profile/password", token, json)
+            } else {
+                pendingFetchDao.insert(
+                    request = PendingFetchData(
+                        method = "PATCH",
+                        url = urlString + "/profile/password",
+                        bodyJson = json.toString()
+                    )
+                )
+                JSONObject()
+            }
         }
     }
 

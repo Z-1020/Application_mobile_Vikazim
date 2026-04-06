@@ -6,14 +6,14 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 
 @Database(
-    entities = [UserData::class, SettingsData::class, PendingRequestData::class],
+    entities = [UserData::class, SettingsData::class, PendingFetchData::class],
     version = 1,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun userDao(): IUserDao
     abstract fun settingsDao(): ISettingsDAO
-    abstract fun pendingRequestData(): IPendingFetchData
+    abstract fun pendingRequestDao(): IPendingFetchData
 
 
     companion object {

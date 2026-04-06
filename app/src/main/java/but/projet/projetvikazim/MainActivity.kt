@@ -1,6 +1,7 @@
 package but.projet.projetvikazim
 
 
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -27,12 +28,16 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import but.projet.projetvikazim.api.APIFetcher
 import but.projet.projetvikazim.api.SessionConnection
 import but.projet.projetvikazim.ui.theme.Application_mobile_VikazimTheme
 import but.projet.projetvikazim.utils.ConnectionStatusUtils
+import but.projet.projetvikazim.utils.DateUtils
 import but.projet.projetvikazim.utils.ErrorUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONException
@@ -90,7 +95,15 @@ fun Main(modifier: Modifier){
             println(usedUrl.value)
         }
     }
-
+    LaunchedEffect(Unit) {
+        while(true){
+            val currentStatus = ConnectionStatusUtils.isOnline(context)
+            if(online.value != currentStatus){
+                online.value = currentStatus
+            }
+            delay(1000)
+        }
+    }
     Column() {
         when (etatPage.value) {
             EtatPage.Vue -> {
@@ -103,7 +116,7 @@ fun Main(modifier: Modifier){
                             context = context
                         )
                     }
-                    ProfileInformation(modifier, userData.value, sessionConnection, online.value, userDataController, usedUrl)
+                    ProfileInformation(modifier, userData.value, sessionConnection, online.value, userDataController, usedUrl, context)
 
                 } else {
                     //enligne
@@ -112,7 +125,12 @@ fun Main(modifier: Modifier){
                         if(automaticLogin.value){
                             //connexion automatique
                             val automaticLoginError: MutableState<String> = remember { mutableStateOf("") }
-                            Text(automaticLoginError.value)
+                            if(!automaticLoginError.value.isEmpty()){
+                                Text("Erreur de connexion automatique, veuillez vérifier vos identifiants")
+                                ConnectionForm(sessionConnection, usedUrl, online)
+
+                            }
+
                             val scope = rememberCoroutineScope()
                             LaunchedEffect(sessionConnection.apiToken) {
                                 sessionConnection.username=registeredUsername.value
@@ -120,8 +138,8 @@ fun Main(modifier: Modifier){
                                     scope.launch {
                                         try {
                                             val result = withContext(Dispatchers.IO) {
-                                                println("début")
                                                 sessionConnection.login(usedUrl.value + "/login")
+
                                             }
                                             println(result.toString())
                                             if (!result.getBoolean("success")) {
@@ -137,12 +155,12 @@ fun Main(modifier: Modifier){
                         } else {
                             //connexion pas automatique
                             Column() {
-                                ConnectionForm(sessionConnection, usedUrl)
+                                ConnectionForm(sessionConnection, usedUrl, online)
                             }
                         }
 
                     } else {
-                        //il faut pas de connexion supplémentaire
+                        //il faut pas de connexion supplémentaire/connecté
                         LaunchedEffect(sessionConnection.apiToken) {
                             userData.value = userDataController.getUserData(
                                 urlString = usedUrl.value,
@@ -150,12 +168,13 @@ fun Main(modifier: Modifier){
                                 context = context
                             )
                         }
-                        ProfileInformation(modifier, userData.value, sessionConnection, online.value, userDataController, usedUrl)
+                        AutoSendPendingRequests(sessionConnection.apiToken)
+                        ProfileInformation(modifier, userData.value, sessionConnection, online.value, userDataController, usedUrl, context)
                     }
                 }
             }
             EtatPage.ListeRequetes -> ListeRequetesPage()
-            EtatPage.Parametres -> Parametres()
+            EtatPage.Parametres -> Parametres(usedUrl)
         }
 
         PageNavbar(etatPage = etatPage)
@@ -163,7 +182,7 @@ fun Main(modifier: Modifier){
 }
 
 @Composable
-fun Parametres(){
+fun Parametres(usedUrl: MutableState<String>) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
@@ -181,6 +200,9 @@ fun Parametres(){
             username.value = settings.username.toString()
             password.value = settings.password.toString()
             customUrl.value = settings.customUrl.toString()
+            if (customUrl.value.isEmpty()){
+                customUrl.value = usedUrl.value
+            }
         }
     }
     Column {
@@ -241,7 +263,8 @@ fun ProfileInformation(
     sessionConnection: SessionConnection,
     isOnline: Boolean,
     userDataController: UserDataController,
-    usedUrl: MutableState<String>
+    usedUrl: MutableState<String>,
+    context: Context
 ) {
     val updatingProfile = remember { mutableStateOf(false) }
 
@@ -265,10 +288,10 @@ fun ProfileInformation(
         val license= remember { mutableStateOf("Aucune licence") }
         val chipCode= remember { mutableStateOf("—") }
 
-        if(userData.licenseNumber != null){
+        if(userData.licenseNumber != null && userData.licenseNumber!=""){
             license.value=userData.licenseNumber.toString()
         }
-        if(userData.chipCode != null){
+        if(userData.chipCode != null && userData.chipCode!=""){
             chipCode.value=userData.chipCode.toString()
         }
 
@@ -279,7 +302,7 @@ fun ProfileInformation(
                 Text("Nom d'utilisateur : " + username.value)
                 Text("Nom : " + name.value)
                 Text("Prenom : " + surname.value)
-                Text("Date de naissance : " + birthdate.value)
+                Text("Date de naissance : " + DateUtils.apiToDisplay(birthdate.value))
                 Text("Adresse : " + address.value)
                 Text("Téléphone : " + phone.value)
                 Text("Adresse mail : " + email.value)
@@ -294,9 +317,9 @@ fun ProfileInformation(
             }
 
         } else {
-            ProfileUpdateForm(username, name, surname, birthdate, address, phone, email, license, chipCode, updatingProfile, sessionConnection, userDataController, usedUrl)
+            ProfileUpdateForm(username, name, surname, birthdate, address, phone, email, license, chipCode, updatingProfile, sessionConnection, userDataController, usedUrl, isOnline)
 
-            PasswordUpdateForm(sessionConnection, updatingProfile, userDataController, usedUrl)
+            PasswordUpdateForm(sessionConnection, updatingProfile, userDataController, usedUrl, isOnline, context, userData)
 
 
         }
@@ -317,7 +340,8 @@ fun ProfileUpdateForm(
     updatingProfile: MutableState<Boolean>,
     sessionConnection: SessionConnection,
     userDataController: UserDataController,
-    usedUrl: MutableState<String>
+    usedUrl: MutableState<String>,
+    isOnline: Boolean
 ) {
     val usernameCopy = remember { mutableStateOf(username.value) }
     val nameCopy = remember { mutableStateOf(name.value) }
@@ -445,11 +469,16 @@ fun ProfileUpdateForm(
                 put("ADH_NUM_LICENCIE", licenseCopy.value)
                 put("ADH_NUM_PUCE", chipCopy.value)
             }
+
             scope.launch {
 
                 try {
-
-                    val result = userDataController.updateUserData(usedUrl.value, sessionConnection.apiToken, context, json)
+                    val result = userDataController.updateUserData(
+                            usedUrl.value,
+                            sessionConnection.apiToken,
+                            context,
+                            json
+                        )
 
                     println(result.toString())
                     if (!result.isNull("success")) {
@@ -473,7 +502,10 @@ fun ProfileUpdateForm(
                         if (result.has("errors")) {
                             errorMessage.value = ErrorUtils.parseErrors(result)
                         } else {
-
+                            if(result.has("status")){
+                                errorMessage.value=result.getString("status")
+                                updatingProfile.value=false
+                            }
                         }
                     }
                 } catch (e: JSONException) {
@@ -491,7 +523,10 @@ fun PasswordUpdateForm(
     sessionConnection: SessionConnection,
     updatingProfile: MutableState<Boolean>,
     userDataController: UserDataController,
-    usedUrl: MutableState<String>
+    usedUrl: MutableState<String>,
+    isOnline: Boolean,
+    context: Context,
+    userData: UserData
 ){
     val actualPassword = remember { mutableStateOf("") }
     val newPassword = remember { mutableStateOf("") }
@@ -542,7 +577,7 @@ fun PasswordUpdateForm(
             }
             scope.launch {
                 try {
-                    val result = userDataController.updatePassword(usedUrl.value, sessionConnection.apiToken, json)
+                    val result = userDataController.updatePassword(usedUrl.value, sessionConnection.apiToken, json, isOnline, context)
 
                     if (result.has("errors")) {
                         errorMessage.value = ErrorUtils.parseErrors(result)
@@ -584,12 +619,31 @@ fun PageNavbar(modifier: Modifier = Modifier, etatPage: MutableState<EtatPage>){
 
 @Composable
 fun ListeRequetesPage(modifier: Modifier = Modifier) {
-    Column (modifier = modifier) {
-        Text("Requêtes en attentes")
-        Column() {
+    val context = LocalContext.current
+    val requests = remember { mutableStateOf<List<PendingFetchData>>(emptyList()) }
 
+    LaunchedEffect(Unit) {
+        val dao = AppDatabase.getInstance(context).pendingRequestDao()
+        requests.value = dao.getAll()
+    }
+
+    Column(modifier = modifier.padding(16.dp)) {
+        Text("Requêtes en attente (${requests.value.size})")
+
+        Column(modifier = Modifier.padding(top = 8.dp)) {
+            requests.value.forEach { request ->
+                Column(modifier = Modifier.padding(vertical = 4.dp)) {
+                    Text("ID : ${request.id}")
+                    Text("Méthode : ${request.method}")
+                    Text("URL : ${request.url}")
+                    Text("Body : ${request.bodyJson.take(50)}...") // limiter l'affichage
+                }
+            }
+
+            if (requests.value.isEmpty()) {
+                Text("Aucune requête en attente.")
+            }
         }
-
     }
 }
 
@@ -602,7 +656,11 @@ fun MainPreview() {
 
 
 @Composable
-fun ConnectionForm(sessionConnection: SessionConnection, usedUrl: MutableState<String>){
+fun ConnectionForm(
+    sessionConnection: SessionConnection,
+    usedUrl: MutableState<String>,
+    online: MutableState<Boolean>
+){
     val isSignUpForm: MutableState<Boolean> = remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val errorMessage: MutableState<String> = remember { mutableStateOf("") }
@@ -823,5 +881,44 @@ fun login(
         Button({isSignUpForm.value=true}) {
             Text("S'inscrire")
         }
+    }
+}
+@Composable
+fun AutoSendPendingRequests(token: String) {
+    val context = LocalContext.current
+    val dao = AppDatabase.getInstance(context).pendingRequestDao()
+
+    LaunchedEffect(token) {
+        if (token.isNotEmpty()) {
+            while (true) {
+                val pendingRequests = dao.getAll()
+                pendingRequests.forEach { request ->
+                    val success = sendRequest(request, token)
+                    if (success) {
+                        dao.deleteById(request.id)
+                    }
+                }
+                delay(5000)
+            }
+        }
+    }
+}
+
+suspend fun sendRequest(request: PendingFetchData, token: String): Boolean {
+    return try {
+        withContext(Dispatchers.IO) {
+            val apiFetcher = APIFetcher()
+            val jsonObject = JSONObject(request.bodyJson)
+            apiFetcher.fetch(
+                urlString = request.url,
+                methods = request.method,
+                jsonObject = jsonObject,
+                token = token
+            )
+        }
+        true
+    } catch (e: Exception) {
+        e.printStackTrace()
+        false
     }
 }
