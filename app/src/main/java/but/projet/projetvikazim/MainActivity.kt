@@ -34,6 +34,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONException
 import org.json.JSONObject
+import kotlin.collections.iterator
 
 
 val baseUrl: String = "https://devmobile.nathanaelheyberger.fr/api"
@@ -144,184 +145,9 @@ fun ProfileInformation(
             }
 
         } else {
-            val usernameCopy = remember { mutableStateOf(username.value) }
-            val nameCopy = remember { mutableStateOf(name.value) }
-            val surnameCopy = remember { mutableStateOf(surname.value) }
+            ProfileUpdateForm(username, name, surname, birthdate, address, phone, email, license, chip, updatingProfile, profileController, sessionConnection)
 
-            val birthdateCopy = remember { mutableStateOf(birthdate.value) }
-
-            val addressCopy = remember { mutableStateOf(address.value) }
-            val phoneCopy = remember { mutableStateOf(phone.value) }
-            val emailCopy = remember { mutableStateOf(email.value) }
-
-            val licenseCopy = remember { mutableStateOf(license.value) }
-            val chipCopy = remember { mutableStateOf(chip.value) }
-
-            if(license.value=="Aucune licence"){
-                licenseCopy.value=""
-            }
-
-            if(chip.value=="—"){
-                chipCopy.value=""
-            }
-
-            val errorMessage: MutableState<String> = remember { mutableStateOf("") }
-
-            Text("Modifier le profile")
-            if(errorMessage.value!=""){
-                Text(errorMessage.value)
-            }
-            Column() {
-                TextField(
-                    value = usernameCopy.value,
-                    onValueChange = { usernameCopy.value = it},
-                    label = { Text("Nom d'utilisateur") }
-                )
-                TextField(
-                    value = surnameCopy.value,
-                    onValueChange = { surnameCopy.value = it},
-                    label = { Text("Prénom") }
-                )
-                TextField(
-                    value = nameCopy.value,
-                    onValueChange = { nameCopy.value = it},
-                    label = { Text("Nom") }
-                )
-                TextField(
-                    value = emailCopy.value,
-                    onValueChange = { emailCopy.value = it },
-                    label = { Text("Email") }
-                )
-                TextField(
-                    value = addressCopy.value,
-                    onValueChange = { addressCopy.value = it},
-                    label = { Text("Adresse") }
-                )
-                TextField(
-                    value = phoneCopy.value,
-                    onValueChange = { phoneCopy.value = it},
-                    label = { Text("Numéro de Téléphone") }
-                )
-
-                val birthdateArray = birthdateCopy.value.split("-")
-                val year = remember { mutableStateOf(birthdateArray[0]) }
-                val month = remember { mutableStateOf(birthdateArray[1]) }
-                val day = remember { mutableStateOf(birthdateArray[2]) }
-
-                Text("Date de naissance")
-                Row {
-                    TextField(
-                        modifier = Modifier.weight(1f),
-                        value = day.value,
-                        onValueChange = {
-                            day.value = it
-                            birthdateCopy.value = "${year.value}-${month.value.padStart(2,'0')}-${day.value.padStart(2,'0')}"
-                        },
-                        label = { Text("Jour") }
-                    )
-                    TextField(
-                        modifier = Modifier.weight(1f),
-                        value = month.value,
-                        onValueChange = {
-                            month.value = it
-                            birthdateCopy.value = "${year.value}-${month.value.padStart(2,'0')}-${day.value.padStart(2,'0')}"
-                        },
-                        label = { Text("Mois") }
-                    )
-                    TextField(
-                        modifier = Modifier.weight(2f),
-                        value = year.value,
-                        onValueChange = {
-                            year.value = it
-                            birthdateCopy.value = "${year.value}-${month.value.padStart(2,'0')}-${day.value.padStart(2,'0')}"
-                        },
-                        label = { Text("Année") }
-                    )
-                }
-                TextField(
-                    value = licenseCopy.value,
-                    onValueChange = { licenseCopy.value = it },
-                    label = { Text("Numéro de licence") }
-                )
-                TextField(
-                    value = chipCopy.value,
-                    onValueChange = { chipCopy.value = it },
-                    label = { Text("Numéro de puce") }
-                )
-            }
-            Row() {
-                Button({
-                    updatingProfile.value=false
-                }) {
-                    Text("Annuler")
-                }
-                val scope = rememberCoroutineScope()
-                Button({
-                    val json = JSONObject().apply {
-                        put("COM_PSEUDO", usernameCopy.value)
-                        put("COM_PRENOM", surnameCopy.value)
-                        put("COM_NOM", nameCopy.value)
-                        put("COM_ADRESSE", addressCopy.value)
-                        put("COM_DATE_NAISSANCE", birthdateCopy.value)
-                        put("COM_TELEPHONE", phoneCopy.value)
-                        put("COM_MAIL", emailCopy.value)
-                        put("ADH_NUM_LICENCIE", licenseCopy.value)
-                        put("ADH_NUM_PUCE", chipCopy.value)
-                    }
-                    scope.launch {
-                        try {
-                            val result = withContext(Dispatchers.IO) {
-                                profileController.updateProfileInformation(
-                                    baseUrl + "/profile",
-                                    token = sessionConnection.apiToken,
-                                    json = json
-                                )
-                            }
-                            System.out.println(result.toString())
-                            if (!result.isNull("success")) {
-                                if(result.getBoolean("success")){
-                                    username.value = usernameCopy.value
-                                    name.value = nameCopy.value
-                                    surname.value = surnameCopy.value
-                                    address.value = addressCopy.value
-                                    phone.value = phoneCopy.value
-                                    email.value = emailCopy.value
-                                    license.value = licenseCopy.value
-                                    chip.value = chipCopy.value
-                                    birthdate.value=birthdateCopy.value
-                                    updatingProfile.value=false
-                                } else {
-                                    if (result.has("errors")) {
-                                        val errors = result.getJSONObject("errors")
-                                        var errorString = ""
-                                        for(error in errors.keys()){
-                                            val errorText = errors.get(error).toString().replace("[\"","").replace("\",\"",".\n").replace("\"]",".")
-                                            errorString=errorString+errorText+"\n"
-                                        }
-                                        errorMessage.value = errorString
-                                    }
-                                }
-                            } else {
-                                if (result.has("errors")) {
-                                    val errors = result.getJSONObject("errors")
-                                    var errorString = ""
-                                    for(error in errors.keys()){
-                                        val errorText = errors.get(error).toString().replace("[\"","").replace("\",\"",".\n").replace("\"]",".")
-                                        errorString=errorString+errorText+"\n"
-                                    }
-                                    errorMessage.value = errorString
-                                }
-                            }
-                        } catch (e: JSONException) {
-                            e.printStackTrace()
-                        }
-                    }
-                }) {
-                    Text("Confirmer")
-                }
-            }
-
-            PasswordUpdateForm(profileController, sessionConnection)
+            PasswordUpdateForm(profileController, sessionConnection, updatingProfile)
 
 
         }
@@ -329,54 +155,281 @@ fun ProfileInformation(
 }
 
 @Composable
-fun PasswordUpdateForm(profileController: ProfileController, sessionConnection: SessionConnection){
+fun ProfileUpdateForm(
+    username: MutableState<String>,
+    name: MutableState<String>,
+    surname: MutableState<String>,
+    birthdate: MutableState<String>,
+    address: MutableState<String>,
+    phone: MutableState<String>,
+    email: MutableState<String>,
+    license: MutableState<String>,
+    chip: MutableState<String>,
+    updatingProfile: MutableState<Boolean>,
+    profileController: ProfileController,
+    sessionConnection: SessionConnection
+) {
+    val usernameCopy = remember { mutableStateOf(username.value) }
+    val nameCopy = remember { mutableStateOf(name.value) }
+    val surnameCopy = remember { mutableStateOf(surname.value) }
+
+    val birthdateCopy = remember { mutableStateOf(birthdate.value) }
+
+    val addressCopy = remember { mutableStateOf(address.value) }
+    val phoneCopy = remember { mutableStateOf(phone.value) }
+    val emailCopy = remember { mutableStateOf(email.value) }
+
+    val licenseCopy = remember { mutableStateOf(license.value) }
+    val chipCopy = remember { mutableStateOf(chip.value) }
+
+    if(license.value=="Aucune licence"){
+        licenseCopy.value=""
+    }
+
+    if(chip.value=="—"){
+        chipCopy.value=""
+    }
+
+    val errorMessage: MutableState<String> = remember { mutableStateOf("") }
+
+    Text("Modifier le profile")
+    if(errorMessage.value!=""){
+        Text(errorMessage.value)
+    }
+    Column() {
+        TextField(
+            value = usernameCopy.value,
+            onValueChange = { usernameCopy.value = it},
+            label = { Text("Nom d'utilisateur") }
+        )
+        TextField(
+            value = surnameCopy.value,
+            onValueChange = { surnameCopy.value = it},
+            label = { Text("Prénom") }
+        )
+        TextField(
+            value = nameCopy.value,
+            onValueChange = { nameCopy.value = it},
+            label = { Text("Nom") }
+        )
+        TextField(
+            value = emailCopy.value,
+            onValueChange = { emailCopy.value = it },
+            label = { Text("Email") }
+        )
+        TextField(
+            value = addressCopy.value,
+            onValueChange = { addressCopy.value = it},
+            label = { Text("Adresse") }
+        )
+        TextField(
+            value = phoneCopy.value,
+            onValueChange = { phoneCopy.value = it},
+            label = { Text("Numéro de Téléphone") }
+        )
+
+        val birthdateArray = birthdateCopy.value.split("-")
+        val year = remember { mutableStateOf(birthdateArray[0]) }
+        val month = remember { mutableStateOf(birthdateArray[1]) }
+        val day = remember { mutableStateOf(birthdateArray[2]) }
+
+        Text("Date de naissance")
+        Row {
+            TextField(
+                modifier = Modifier.weight(1f),
+                value = day.value,
+                onValueChange = {
+                    day.value = it
+                    birthdateCopy.value = "${year.value}-${month.value.padStart(2,'0')}-${day.value.padStart(2,'0')}"
+                },
+                label = { Text("Jour") }
+            )
+            TextField(
+                modifier = Modifier.weight(1f),
+                value = month.value,
+                onValueChange = {
+                    month.value = it
+                    birthdateCopy.value = "${year.value}-${month.value.padStart(2,'0')}-${day.value.padStart(2,'0')}"
+                },
+                label = { Text("Mois") }
+            )
+            TextField(
+                modifier = Modifier.weight(2f),
+                value = year.value,
+                onValueChange = {
+                    year.value = it
+                    birthdateCopy.value = "${year.value}-${month.value.padStart(2,'0')}-${day.value.padStart(2,'0')}"
+                },
+                label = { Text("Année") }
+            )
+        }
+        TextField(
+            value = licenseCopy.value,
+            onValueChange = { licenseCopy.value = it },
+            label = { Text("Numéro de licence") }
+        )
+        TextField(
+            value = chipCopy.value,
+            onValueChange = { chipCopy.value = it },
+            label = { Text("Numéro de puce") }
+        )
+    }
+    Row() {
+        Button({
+            updatingProfile.value=false
+        }) {
+            Text("Annuler")
+        }
+        val scope = rememberCoroutineScope()
+        Button({
+            val json = JSONObject().apply {
+                put("COM_PSEUDO", usernameCopy.value)
+                put("COM_PRENOM", surnameCopy.value)
+                put("COM_NOM", nameCopy.value)
+                put("COM_ADRESSE", addressCopy.value)
+                put("COM_DATE_NAISSANCE", birthdateCopy.value)
+                put("COM_TELEPHONE", phoneCopy.value)
+                put("COM_MAIL", emailCopy.value)
+                put("ADH_NUM_LICENCIE", licenseCopy.value)
+                put("ADH_NUM_PUCE", chipCopy.value)
+            }
+            scope.launch {
+                try {
+                    val result = withContext(Dispatchers.IO) {
+                        profileController.updateProfileInformation(
+                            baseUrl + "/profile",
+                            token = sessionConnection.apiToken,
+                            json = json
+                        )
+                    }
+                    System.out.println(result.toString())
+                    if (!result.isNull("success")) {
+                        if(result.getBoolean("success")){
+                            username.value = usernameCopy.value
+                            name.value = nameCopy.value
+                            surname.value = surnameCopy.value
+                            address.value = addressCopy.value
+                            phone.value = phoneCopy.value
+                            email.value = emailCopy.value
+                            license.value = licenseCopy.value
+                            chip.value = chipCopy.value
+                            birthdate.value=birthdateCopy.value
+                            updatingProfile.value=false
+                        } else {
+                            if (result.has("errors")) {
+                                val errors = result.getJSONObject("errors")
+                                var errorString = ""
+                                for(error in errors.keys()){
+                                    val errorText = errors.get(error).toString().replace("[\"","").replace("\",\"",".\n").replace("\"]",".")
+                                    errorString=errorString+errorText+"\n"
+                                }
+                                errorMessage.value = errorString
+                            }
+                        }
+                    } else {
+                        if (result.has("errors")) {
+                            val errors = result.getJSONObject("errors")
+                            var errorString = ""
+                            for(error in errors.keys()){
+                                val errorText = errors.get(error).toString().replace("[\"","").replace("\",\"",".\n").replace("\"]",".")
+                                errorString=errorString+errorText+"\n"
+                            }
+                            errorMessage.value = errorString
+                        }
+                    }
+                } catch (e: JSONException) {
+                    e.printStackTrace()
+                }
+            }
+        }) {
+            Text("Confirmer")
+        }
+    }
+}
+
+@Composable
+fun PasswordUpdateForm(
+    profileController: ProfileController,
+    sessionConnection: SessionConnection,
+    updatingProfile: MutableState<Boolean>
+){
     val actualPassword = remember { mutableStateOf("") }
     val newPassword = remember { mutableStateOf("") }
     val newPasswordConfirmation = remember { mutableStateOf("") }
 
+    val errorMessage: MutableState<String> = remember { mutableStateOf("") }
+
     Text("Modifier le mot de passe")
+    if(errorMessage.value!=""){
+        Text(errorMessage.value)
+    }
     Column() {
         TextField(
             value = actualPassword.value,
             onValueChange = { actualPassword.value = it},
-            label = { Text("Mot de passe actuel") }
+            label = { Text("Mot de passe actuel") },
+            visualTransformation = PasswordVisualTransformation()
+
         )
         TextField(
             value = newPassword.value,
             onValueChange = { newPassword.value = it},
-            label = { Text("Nouveau mot de passe") }
+            label = { Text("Nouveau mot de passe") },
+            visualTransformation = PasswordVisualTransformation()
+
         )
         TextField(
             value = newPasswordConfirmation.value,
             onValueChange = { newPasswordConfirmation.value = it},
-            label = { Text("Confirmation du nouveau mot de passe") }
+            label = { Text("Confirmation du nouveau mot de passe") },
+            visualTransformation = PasswordVisualTransformation()
+
+
         )
     }
     val scope = rememberCoroutineScope()
-    Button({
-        val json = JSONObject().apply {
-            put("current_password", actualPassword.value)
-            put("password", newPassword.value)
-            put("password_confirmation", newPasswordConfirmation.value)
+    Row() {
+        Button({
+            updatingProfile.value=false
+        }) {
+            Text("Annuler")
         }
-        scope.launch {
-            try {
-                val result = withContext(Dispatchers.IO) {
-                    profileController.updateProfileInformation(
-                        baseUrl + "/profile/password",
-                        token = sessionConnection.apiToken,
-                        json = json
-                    )
-                }
-            } catch (e: JSONException) {
-                e.printStackTrace()
+        Button({
+            val json = JSONObject().apply {
+                put("current_password", actualPassword.value)
+                put("password", newPassword.value)
+                put("password_confirmation", newPasswordConfirmation.value)
             }
+            scope.launch {
+                try {
+                    val result = withContext(Dispatchers.IO) {
+                        profileController.updatePassword(
+                            baseUrl + "/profile/password",
+                            token = sessionConnection.apiToken,
+                            json = json
+                        )
+                    }
+                    if (result.has("errors")) {
+                        val errors = result.getJSONObject("errors")
+                        var errorString = ""
+                        for(error in errors.keys()){
+                            val errorText = errors.get(error).toString().replace("[\"","").replace("\",\"",".\n").replace("\"]",".")
+                            errorString=errorString+errorText+"\n"
+                        }
+                        errorMessage.value = errorString
+                    } else {
+                        updatingProfile.value=false
+                    }
+
+                    System.out.println(result)
+                } catch (e: JSONException) {
+                    e.printStackTrace()
+                }
+            }
+        }){
+            Text("Modifier le mot de passe")
         }
-    }){
-        Text("Modifier le mot de passe")
     }
-
-
 }
 
 @Composable

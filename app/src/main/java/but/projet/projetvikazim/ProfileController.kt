@@ -13,7 +13,7 @@ class ProfileController {
     }
 
     fun updatePassword(urlString: String, token: String, json: JSONObject): JSONObject {
-        return JSONObject(APIFetcher().fetchWithToken(urlString, "PATCH", json, token))
+        return JSONObject(APIFetcher().fetchWithToken(urlString, "PUT", json, token))
     }
 
 
