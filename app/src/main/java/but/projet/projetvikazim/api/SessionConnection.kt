@@ -13,7 +13,7 @@ class SessionConnection {
     var passwordConfirmation by mutableStateOf("")
     var surname by mutableStateOf("")
     var name by mutableStateOf("")
-    var birthdate by mutableStateOf("")  // format "YYYY-MM-DD"
+    var birthdate by mutableStateOf("")
     var address by mutableStateOf("")
     var phone by mutableStateOf("")
     var email by mutableStateOf("")
@@ -26,6 +26,7 @@ class SessionConnection {
             put("username", username)
             put("password", password)
         }
+        println(json)
         return JSONObject(APIFetcher().fetch(urlString, "POST",json, null))
     }
 

@@ -39,8 +39,7 @@ import org.json.JSONException
 import org.json.JSONObject
 
 
-const val baseUrl: String = "https://devmobile.nathanaelheyberger.fr/api"
-
+var basedUrl = "https://devmobile.nathanaelheyberger.fr/api"
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -64,9 +63,7 @@ fun Main(modifier: Modifier){
     val sessionConnection = remember { SessionConnection() }
     val context = LocalContext.current
     val online = remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        online.value = ConnectionStatusUtils.isOnline(context)
-    }
+
     val settingsDataDao = AppDatabase.getInstance(context).settingsDao()
     val userData = remember { mutableStateOf<UserData?>(null) }
     val userDataController = remember { UserDataController() }
@@ -74,59 +71,87 @@ fun Main(modifier: Modifier){
     val registeredUsername = remember { mutableStateOf("") }
     val registeredPassword = remember { mutableStateOf("") }
     val automaticLogin = remember { mutableStateOf(false) }
+    val usedUrl = remember { mutableStateOf(basedUrl) }
 
-
+    //charger les paramètres + online
     LaunchedEffect(Unit) {
         online.value = ConnectionStatusUtils.isOnline(context)
-
         val settings = settingsDataDao.getSettings()
-
         if (settings != null) {
             automaticLogin.value = settings.automaticLogin == true
             registeredUsername.value = settings.username.toString()
             registeredPassword.value = settings.password.toString()
+            if(settings.customUrl?.isNotEmpty() == true){
+                usedUrl.value = settings.customUrl
+            }
+            println(automaticLogin.value)
+            println(registeredUsername.value)
+            println(registeredPassword.value)
+            println(usedUrl.value)
         }
     }
 
     Column() {
         when (etatPage.value) {
             EtatPage.Vue -> {
-
-                if(sessionConnection.apiToken=="" && online.value && automaticLogin.value!=true){
-                    Column() {
-                        ConnectionForm(sessionConnection)
-                    }
-                    println(online.value)
-                } else {
-                    val automaticLoginError: MutableState<String> = remember { mutableStateOf("") }
-                    Text(automaticLoginError.value)
-                    val scope = rememberCoroutineScope()
+                if(!online.value){
+                    //hors-ligne
                     LaunchedEffect(sessionConnection.apiToken) {
-                        if(sessionConnection.apiToken=="" && automaticLogin.value==true) {
-                            scope.launch {
-                                try {
-                                    val result = withContext(Dispatchers.IO) {
-                                        println("début")
-                                        sessionConnection.login(baseUrl + "/login")
-                                    }
-                                    println(result.toString())
-                                    if (!result.getBoolean("success")) {
-                                        automaticLoginError.value = result.getString("message")
-                                    } else {
-                                        sessionConnection.apiToken = result.getString("token")
-                                    }
-                                } catch (e: JSONException){
-                                    e.printStackTrace()
-                                }
+                        userData.value = userDataController.getUserData(
+                            urlString = usedUrl.value,
+                            token = sessionConnection.apiToken,
+                            context = context
+                        )
+                    }
+                    ProfileInformation(modifier, userData.value, sessionConnection, online.value, userDataController, usedUrl)
 
+                } else {
+                    //enligne
+                    if(sessionConnection.apiToken==""){
+                        //il faut une connexion
+                        if(automaticLogin.value){
+                            //connexion automatique
+                            val automaticLoginError: MutableState<String> = remember { mutableStateOf("") }
+                            Text(automaticLoginError.value)
+                            val scope = rememberCoroutineScope()
+                            LaunchedEffect(sessionConnection.apiToken) {
+                                sessionConnection.username=registeredUsername.value
+                                sessionConnection.password=registeredPassword.value
+                                    scope.launch {
+                                        try {
+                                            val result = withContext(Dispatchers.IO) {
+                                                println("début")
+                                                sessionConnection.login(usedUrl.value + "/login")
+                                            }
+                                            println(result.toString())
+                                            if (!result.getBoolean("success")) {
+                                                automaticLoginError.value = result.getString("message")
+                                            } else {
+                                                sessionConnection.apiToken = result.getString("token")
+                                            }
+                                        } catch (e: JSONException){
+                                            e.printStackTrace()
+                                        }
+                                    }
                             }
                         } else {
-                            println("coucou")
-                            userData.value = userDataController.getUserData(urlString = baseUrl, token = sessionConnection.apiToken, context = context)
+                            //connexion pas automatique
+                            Column() {
+                                ConnectionForm(sessionConnection, usedUrl)
+                            }
                         }
 
+                    } else {
+                        //il faut pas de connexion supplémentaire
+                        LaunchedEffect(sessionConnection.apiToken) {
+                            userData.value = userDataController.getUserData(
+                                urlString = usedUrl.value,
+                                token = sessionConnection.apiToken,
+                                context = context
+                            )
+                        }
+                        ProfileInformation(modifier, userData.value, sessionConnection, online.value, userDataController, usedUrl)
                     }
-                    ProfileInformation(modifier, userData.value, sessionConnection, online.value, userDataController)
                 }
             }
             EtatPage.ListeRequetes -> ListeRequetesPage()
@@ -186,7 +211,7 @@ fun Parametres(){
         TextField(
             value = customUrl.value,
             onValueChange = { customUrl.value = it },
-            label = { Text("Custom API URL") },
+            label = { Text("URL Customizé d'API") },
             placeholder = { Text("https://mon-api.fr/api") }
         )
         Row {
@@ -215,8 +240,9 @@ fun ProfileInformation(
     userData: UserData?,
     sessionConnection: SessionConnection,
     isOnline: Boolean,
-    userDataController: UserDataController
-    ) {
+    userDataController: UserDataController,
+    usedUrl: MutableState<String>
+) {
     val updatingProfile = remember { mutableStateOf(false) }
 
     if (userData==null) {
@@ -268,9 +294,9 @@ fun ProfileInformation(
             }
 
         } else {
-            ProfileUpdateForm(username, name, surname, birthdate, address, phone, email, license, chipCode, updatingProfile, sessionConnection, userDataController)
+            ProfileUpdateForm(username, name, surname, birthdate, address, phone, email, license, chipCode, updatingProfile, sessionConnection, userDataController, usedUrl)
 
-            PasswordUpdateForm(sessionConnection, updatingProfile, userDataController)
+            PasswordUpdateForm(sessionConnection, updatingProfile, userDataController, usedUrl)
 
 
         }
@@ -290,7 +316,8 @@ fun ProfileUpdateForm(
     chip: MutableState<String>,
     updatingProfile: MutableState<Boolean>,
     sessionConnection: SessionConnection,
-    userDataController: UserDataController
+    userDataController: UserDataController,
+    usedUrl: MutableState<String>
 ) {
     val usernameCopy = remember { mutableStateOf(username.value) }
     val nameCopy = remember { mutableStateOf(name.value) }
@@ -422,7 +449,7 @@ fun ProfileUpdateForm(
 
                 try {
 
-                    val result = userDataController.updateUserData(baseUrl, sessionConnection.apiToken, context, json)
+                    val result = userDataController.updateUserData(usedUrl.value, sessionConnection.apiToken, context, json)
 
                     println(result.toString())
                     if (!result.isNull("success")) {
@@ -463,7 +490,8 @@ fun ProfileUpdateForm(
 fun PasswordUpdateForm(
     sessionConnection: SessionConnection,
     updatingProfile: MutableState<Boolean>,
-    userDataController: UserDataController
+    userDataController: UserDataController,
+    usedUrl: MutableState<String>
 ){
     val actualPassword = remember { mutableStateOf("") }
     val newPassword = remember { mutableStateOf("") }
@@ -514,7 +542,7 @@ fun PasswordUpdateForm(
             }
             scope.launch {
                 try {
-                    val result = userDataController.updatePassword(baseUrl, sessionConnection.apiToken, json)
+                    val result = userDataController.updatePassword(usedUrl.value, sessionConnection.apiToken, json)
 
                     if (result.has("errors")) {
                         errorMessage.value = ErrorUtils.parseErrors(result)
@@ -574,16 +602,16 @@ fun MainPreview() {
 
 
 @Composable
-fun ConnectionForm(sessionConnection: SessionConnection){
+fun ConnectionForm(sessionConnection: SessionConnection, usedUrl: MutableState<String>){
     val isSignUpForm: MutableState<Boolean> = remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val errorMessage: MutableState<String> = remember { mutableStateOf("") }
 
     if(isSignUpForm.value){
-        signUp(sessionConnection, scope, errorMessage, isSignUpForm)
+        signUp(sessionConnection, scope, errorMessage, isSignUpForm, usedUrl)
 
     } else {
-        login(sessionConnection, scope, errorMessage, isSignUpForm)
+        login(sessionConnection, scope, errorMessage, isSignUpForm, usedUrl)
     }
 
 }
@@ -593,7 +621,8 @@ fun signUp(
     sessionConnection: SessionConnection,
     scope: CoroutineScope,
     errorMessage: MutableState<String>,
-    isSignUpForm: MutableState<Boolean>
+    isSignUpForm: MutableState<Boolean>,
+    usedUrl: MutableState<String>
 ){
     Column() {
         Text("Inscription")
@@ -707,7 +736,7 @@ fun signUp(
                 try {
                     val result = withContext(Dispatchers.IO) {
                         println("début")
-                        sessionConnection.signup(baseUrl + "/signup")
+                        sessionConnection.signup(usedUrl.value + "/signup")
                     }
                     println(result.toString())
                     if (result.has("errors")) {
@@ -745,7 +774,8 @@ fun login(
     sessionConnection: SessionConnection,
     scope: CoroutineScope,
     errorMessage: MutableState<String>,
-    isSignUpForm: MutableState<Boolean>
+    isSignUpForm: MutableState<Boolean>,
+    usedUrl: MutableState<String>
 ){
     Column() {
         Text("Connexion")
@@ -771,14 +801,16 @@ fun login(
                 try {
                     val result = withContext(Dispatchers.IO) {
                         println("début")
-                        sessionConnection.login(baseUrl + "/login")
+                        sessionConnection.login(usedUrl.value + "/login")
                     }
                     println(result.toString())
+                    println("avant")
                     if (!result.getBoolean("success")) {
                         errorMessage.value = result.getString("message")
                     } else {
                         sessionConnection.apiToken = result.getString("token")
                     }
+                    println("après")
                 } catch (e: JSONException){
                     e.printStackTrace()
                 }
