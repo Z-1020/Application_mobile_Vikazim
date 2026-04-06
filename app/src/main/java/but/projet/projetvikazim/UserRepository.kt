@@ -24,40 +24,7 @@ class UserRepository(private val context: Context) {
 
         // Lecture : réseau si dispo, sinon Room
     @RequiresPermission(Manifest.permission.ACCESS_NETWORK_STATE)
-    suspend fun getUser(username: String, token: String): UserData? {
-        if (isOnline()) {
-            return try {
-                val json = api.fetch(
-                    "$baseUrl/users/$username",
-                    "GET",
-                    null,
-                    )
-                val obj = JSONObject(json)
-                val user = UserData(
-                    id          = obj.getInt("id"),
-                    username    = obj.getString("username"),
-                    name        = obj.getString("name"),
-                    surname     = obj.getString("surname"),
-                    birthdate   = obj.getString("birthdate"),
-                    address     = obj.getString("address"),
-                    phone       = obj.getString("phone"),
-                    email       = obj.getString("email"),
-                    isLicensed  = obj.getBoolean("is_licensed"),
-                    licenseNumber = obj.optString("license_number", ""),
-                    chipCode    = obj.optString("chip_code", ""),
-                    password = obj.getString("password"),
-                    confirmPassword = obj.getString("confirmPassword"),
-                    isModify    = false
-                )
-                dao.insertUser(user) // on met à jour le cache local
-                user
-                } catch (e: Exception) {
-                    dao.getUser(username) // fallback local
-                }
-            } else {
-                return dao.getUser(username)
-            }
-        }
+
 
         // Écriture : Room immédiatement (marqué dirty), puis sync si online
         @RequiresPermission(Manifest.permission.ACCESS_NETWORK_STATE)

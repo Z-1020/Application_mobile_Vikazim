@@ -26,7 +26,7 @@ class SessionConnection {
             put("username", username)
             put("password", password)
         }
-        return JSONObject(APIFetcher().fetch(urlString, "POST",json))
+        return JSONObject(APIFetcher().fetch(urlString, "POST",json, null))
     }
 
     fun signup(urlString: String): JSONObject {
@@ -46,6 +46,6 @@ class SessionConnection {
                 put("chip_code", chipCode)
             }
         }
-        return JSONObject(APIFetcher().fetch(urlString, "POST", json))
+        return JSONObject(APIFetcher().fetch(urlString, "POST", json, null))
     }
 }

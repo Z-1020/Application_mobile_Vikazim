@@ -23,18 +23,20 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import but.projet.projetvikazim.api.SessionConnection
 import but.projet.projetvikazim.ui.theme.Application_mobile_VikazimTheme
+import but.projet.projetvikazim.utils.ConnectionStatusUtils
+import but.projet.projetvikazim.utils.ErrorUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONException
 import org.json.JSONObject
-import kotlin.collections.iterator
 
 
 val baseUrl: String = "https://devmobile.nathanaelheyberger.fr/api"
@@ -60,24 +62,22 @@ class MainActivity : ComponentActivity() {
 fun Main(modifier: Modifier){
     val etatPage: MutableState<EtatPage> = remember { mutableStateOf<EtatPage>(EtatPage.Vue) }
     val sessionConnection = remember { SessionConnection() }
+    val context = LocalContext.current
+    var online = remember { mutableStateOf(ConnectionStatusUtils.isOnline(context)) }
+    val userData : UserData
+    val userDao = AppDatabase.getInstance(context).userDao()
+    val userDataController = UserDataController()
 
+    
     Column() {
         when (etatPage.value) {
             EtatPage.Vue -> {
-                if(sessionConnection.apiToken==""){
+                if(sessionConnection.apiToken=="" && online.value){
                     Column() {
                         ConnectionForm(sessionConnection)
                     }
                 } else {
-                    val profileController = remember { ProfileController() }
-                    val profileJsonState = remember { mutableStateOf(JSONObject()) }
-                    LaunchedEffect(sessionConnection.apiToken) {
-                        if (sessionConnection.apiToken.isNotEmpty()) {
-                            profileJsonState.value = withContext(Dispatchers.IO) {
-                                profileController.fetchProfile(baseUrl+"/profile", sessionConnection.apiToken)
-                            }
-                        }
-                    }
+
                     ProfileInformation(modifier, profileJsonState.value, sessionConnection, profileController)
                 }
             }
@@ -468,8 +468,6 @@ fun ConnectionForm(sessionConnection: SessionConnection){
     val isSignUpForm: MutableState<Boolean> = remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val errorMessage: MutableState<String> = remember { mutableStateOf("") }
-
-
 
     if(isSignUpForm.value){
         signUp(sessionConnection, scope, errorMessage, isSignUpForm)

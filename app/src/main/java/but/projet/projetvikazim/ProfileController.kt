@@ -4,6 +4,7 @@ import but.projet.projetvikazim.api.APIFetcher
 import org.json.JSONObject
 
 class ProfileController {
+
     fun fetchProfile(urlString: String, token: String): JSONObject {
         return JSONObject(APIFetcher().fetch(urlString, "GET", null, token))
     }

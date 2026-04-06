@@ -1,11 +1,10 @@
 package but.projet.projetvikazim
 
-import android.text.format.DateFormat
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
 
-@Entity(tableName = "users")
+@Entity(tableName = "user")
 data class UserData(
     @PrimaryKey
     var id : Int,
@@ -20,7 +19,6 @@ data class UserData(
     var email : String,
     var isLicensed : Boolean,
     var licenseNumber : String,
-    var chipCode : String,
-    val isModify: Boolean = false
+    var chipCode : String
 
 )
