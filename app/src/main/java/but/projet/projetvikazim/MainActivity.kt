@@ -39,7 +39,7 @@ import org.json.JSONException
 import org.json.JSONObject
 
 
-val baseUrl: String = "https://devmobile.nathanaelheyberger.fr/api"
+const val baseUrl: String = "https://devmobile.nathanaelheyberger.fr/api"
 
 
 class MainActivity : ComponentActivity() {
@@ -63,26 +63,74 @@ fun Main(modifier: Modifier){
     val etatPage: MutableState<EtatPage> = remember { mutableStateOf<EtatPage>(EtatPage.Vue) }
     val sessionConnection = remember { SessionConnection() }
     val context = LocalContext.current
-    var online = remember { mutableStateOf(ConnectionStatusUtils.isOnline(context)) }
-    val userData : UserData
-    val userDao = AppDatabase.getInstance(context).userDao()
-    val userDataController = UserDataController()
+    val online = remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        online.value = ConnectionStatusUtils.isOnline(context)
+    }
+    val settingsDataDao = AppDatabase.getInstance(context).settingsDao()
+    val userData = remember { mutableStateOf<UserData?>(null) }
+    val userDataController = remember { UserDataController() }
 
-    
+    val registeredUsername = remember { mutableStateOf("") }
+    val registeredPassword = remember { mutableStateOf("") }
+    val automaticLogin = remember { mutableStateOf(false) }
+
+
+    LaunchedEffect(Unit) {
+        online.value = ConnectionStatusUtils.isOnline(context)
+
+        val settings = settingsDataDao.getSettings()
+
+        if (settings != null) {
+            automaticLogin.value = settings.automaticLogin == true
+            registeredUsername.value = settings.username.toString()
+            registeredPassword.value = settings.password.toString()
+        }
+    }
+
     Column() {
         when (etatPage.value) {
             EtatPage.Vue -> {
-                if(sessionConnection.apiToken=="" && online.value){
+
+                if(sessionConnection.apiToken=="" && online.value && automaticLogin.value!=true){
                     Column() {
                         ConnectionForm(sessionConnection)
                     }
+                    println(online.value)
                 } else {
+                    val automaticLoginError: MutableState<String> = remember { mutableStateOf("") }
+                    Text(automaticLoginError.value)
+                    val scope = rememberCoroutineScope()
+                    LaunchedEffect(sessionConnection.apiToken) {
+                        if(sessionConnection.apiToken=="" && automaticLogin.value==true) {
+                            scope.launch {
+                                try {
+                                    val result = withContext(Dispatchers.IO) {
+                                        println("début")
+                                        sessionConnection.login(baseUrl + "/login")
+                                    }
+                                    println(result.toString())
+                                    if (!result.getBoolean("success")) {
+                                        automaticLoginError.value = result.getString("message")
+                                    } else {
+                                        sessionConnection.apiToken = result.getString("token")
+                                    }
+                                } catch (e: JSONException){
+                                    e.printStackTrace()
+                                }
 
-                    ProfileInformation(modifier, profileJsonState.value, sessionConnection, profileController)
+                            }
+                        } else {
+                            println("coucou")
+                            userData.value = userDataController.getUserData(urlString = baseUrl, token = sessionConnection.apiToken, context = context)
+                        }
+
+                    }
+                    ProfileInformation(modifier, userData.value, sessionConnection, online.value, userDataController)
                 }
             }
             EtatPage.ListeRequetes -> ListeRequetesPage()
-            EtatPage.Parametres -> {}
+            EtatPage.Parametres -> Parametres()
         }
 
         PageNavbar(etatPage = etatPage)
@@ -90,39 +138,114 @@ fun Main(modifier: Modifier){
 }
 
 @Composable
+fun Parametres(){
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    val settingsDao = AppDatabase.getInstance(context).settingsDao()
+
+    val automaticLogin = remember { mutableStateOf(false) }
+    val username = remember { mutableStateOf("") }
+    val password = remember { mutableStateOf("") }
+    val customUrl = remember { mutableStateOf("") }
+    val message = remember { mutableStateOf("") }
+    LaunchedEffect(Unit) {
+        val settings = settingsDao.getSettings()
+        if(settings != null){
+            automaticLogin.value = settings.automaticLogin == true
+            username.value = settings.username.toString()
+            password.value = settings.password.toString()
+            customUrl.value = settings.customUrl.toString()
+        }
+    }
+    Column {
+        Text("Paramètres")
+        if(message.value.isNotEmpty()){
+            Text(message.value)
+        }
+        Row {
+            Checkbox(
+                checked = automaticLogin.value,
+                onCheckedChange = { automaticLogin.value = it }
+            )
+            Text("Connexion automatique")
+        }
+
+        TextField(
+            value = username.value,
+            onValueChange = { username.value = it },
+            label = { Text("Nom d'utilisateur sauvegardé") }
+        )
+
+        TextField(
+            value = password.value,
+            onValueChange = { password.value = it },
+            label = { Text("Mot de passe sauvegardé") },
+            visualTransformation = PasswordVisualTransformation()
+        )
+        TextField(
+            value = customUrl.value,
+            onValueChange = { customUrl.value = it },
+            label = { Text("Custom API URL") },
+            placeholder = { Text("https://mon-api.fr/api") }
+        )
+        Row {
+            Button({
+                scope.launch {
+                    val settings = SettingsData(
+                        id = 1,
+                        username = username.value,
+                        password = password.value,
+                        automaticLogin = automaticLogin.value,
+                        customUrl = customUrl.value
+                    )
+                    settingsDao.saveSettings(settings)
+                    message.value = "Paramètres sauvegardés"
+                }
+            }) {
+                Text("Sauvegarder")
+            }
+        }
+    }
+}
+
+@Composable
 fun ProfileInformation(
     modifier: Modifier = Modifier,
-    profileJson: JSONObject,
+    userData: UserData?,
     sessionConnection: SessionConnection,
-    profileController: ProfileController
+    isOnline: Boolean,
+    userDataController: UserDataController
     ) {
     val updatingProfile = remember { mutableStateOf(false) }
 
-    if (profileJson.length() == 0) {
-        Text("Chargement...")
-    } else {
-
-        val username = remember { mutableStateOf(profileJson.getString("COM_PSEUDO")) }
-        val name = remember { mutableStateOf(profileJson.getString("COM_NOM")) }
-        val surname = remember { mutableStateOf(profileJson.getString("COM_PRENOM")) }
-        val birthdate = remember { mutableStateOf(profileJson.getString("COM_DATE_NAISSANCE")) }
-
-        val address = remember { mutableStateOf(profileJson.getString("COM_ADRESSE")) }
-        val phone = remember { mutableStateOf(profileJson.getString("COM_TELEPHONE")) }
-        val email = remember { mutableStateOf(profileJson.getString("COM_MAIL")) }
-
-        val adherentIsNull = profileJson.isNull("adherent")
-        val license= remember { mutableStateOf("Aucune licence") }
-        val chip= remember { mutableStateOf("—") }
-        if(!adherentIsNull){
-            val adherent = profileJson.getJSONObject("adherent")
-            if(!adherent.isNull("ADH_NUM_LICENCIE")){
-                license.value=adherent.getString("ADH_NUM_LICENCIE")
-            }
-            if(!adherent.isNull("ADH_NUM_PUCE")){
-                chip.value=adherent.getString("ADH_NUM_PUCE")
-            }
+    if (userData==null) {
+        if(isOnline){
+            Text("Chargement...")
+        } else {
+            Text("Application hors ligne et aucune données de profil stockées")
         }
+
+    } else {
+        val username = remember { mutableStateOf(userData.username) }
+        val name = remember { mutableStateOf(userData.name) }
+        val surname = remember { mutableStateOf(userData.surname) }
+        val birthdate = remember { mutableStateOf(userData.birthdate) }
+
+        val address = remember { mutableStateOf(userData.address) }
+        val phone = remember { mutableStateOf(userData.phone) }
+        val email = remember { mutableStateOf(userData.email) }
+
+        val license= remember { mutableStateOf("Aucune licence") }
+        val chipCode= remember { mutableStateOf("—") }
+
+        if(userData.licenseNumber != null){
+            license.value=userData.licenseNumber.toString()
+        }
+        if(userData.chipCode != null){
+            chipCode.value=userData.chipCode.toString()
+        }
+
 
         if(!updatingProfile.value){
             Text("Profile")
@@ -135,7 +258,7 @@ fun ProfileInformation(
                 Text("Téléphone : " + phone.value)
                 Text("Adresse mail : " + email.value)
                 Text("Licence : "+license.value)
-                Text("Puce : "+chip.value)
+                Text("Puce : "+chipCode.value)
             }
 
             Button({
@@ -145,9 +268,9 @@ fun ProfileInformation(
             }
 
         } else {
-            ProfileUpdateForm(username, name, surname, birthdate, address, phone, email, license, chip, updatingProfile, profileController, sessionConnection)
+            ProfileUpdateForm(username, name, surname, birthdate, address, phone, email, license, chipCode, updatingProfile, sessionConnection, userDataController)
 
-            PasswordUpdateForm(profileController, sessionConnection, updatingProfile)
+            PasswordUpdateForm(sessionConnection, updatingProfile, userDataController)
 
 
         }
@@ -166,8 +289,8 @@ fun ProfileUpdateForm(
     license: MutableState<String>,
     chip: MutableState<String>,
     updatingProfile: MutableState<Boolean>,
-    profileController: ProfileController,
-    sessionConnection: SessionConnection
+    sessionConnection: SessionConnection,
+    userDataController: UserDataController
 ) {
     val usernameCopy = remember { mutableStateOf(username.value) }
     val nameCopy = remember { mutableStateOf(name.value) }
@@ -196,6 +319,8 @@ fun ProfileUpdateForm(
     if(errorMessage.value!=""){
         Text(errorMessage.value)
     }
+
+    val context = LocalContext.current
     Column() {
         TextField(
             value = usernameCopy.value,
@@ -294,15 +419,12 @@ fun ProfileUpdateForm(
                 put("ADH_NUM_PUCE", chipCopy.value)
             }
             scope.launch {
+
                 try {
-                    val result = withContext(Dispatchers.IO) {
-                        profileController.updateProfileInformation(
-                            baseUrl + "/profile",
-                            token = sessionConnection.apiToken,
-                            json = json
-                        )
-                    }
-                    System.out.println(result.toString())
+
+                    val result = userDataController.updateUserData(baseUrl, sessionConnection.apiToken, context, json)
+
+                    println(result.toString())
                     if (!result.isNull("success")) {
                         if(result.getBoolean("success")){
                             username.value = usernameCopy.value
@@ -323,6 +445,8 @@ fun ProfileUpdateForm(
                     } else {
                         if (result.has("errors")) {
                             errorMessage.value = ErrorUtils.parseErrors(result)
+                        } else {
+
                         }
                     }
                 } catch (e: JSONException) {
@@ -337,9 +461,9 @@ fun ProfileUpdateForm(
 
 @Composable
 fun PasswordUpdateForm(
-    profileController: ProfileController,
     sessionConnection: SessionConnection,
-    updatingProfile: MutableState<Boolean>
+    updatingProfile: MutableState<Boolean>,
+    userDataController: UserDataController
 ){
     val actualPassword = remember { mutableStateOf("") }
     val newPassword = remember { mutableStateOf("") }
@@ -390,13 +514,8 @@ fun PasswordUpdateForm(
             }
             scope.launch {
                 try {
-                    val result = withContext(Dispatchers.IO) {
-                        profileController.updatePassword(
-                            baseUrl + "/profile/password",
-                            token = sessionConnection.apiToken,
-                            json = json
-                        )
-                    }
+                    val result = userDataController.updatePassword(baseUrl, sessionConnection.apiToken, json)
+
                     if (result.has("errors")) {
                         errorMessage.value = ErrorUtils.parseErrors(result)
                     } else {
@@ -452,16 +571,7 @@ fun MainPreview() {
     Main(modifier = Modifier)
 }
 
-@Preview(showBackground = true)
-@Composable
-fun ProfileInformationPreview() {
-    Application_mobile_VikazimTheme {
-        val profileJson = remember { mutableStateOf(JSONObject()) }
-        val sessionConnection= SessionConnection()
-        val profileController= ProfileController()
-        ProfileInformation(profileJson = profileJson.value, sessionConnection = sessionConnection, profileController = profileController)
-    }
-}
+
 
 @Composable
 fun ConnectionForm(sessionConnection: SessionConnection){

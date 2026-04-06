@@ -5,8 +5,6 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
-import androidx.room.Upsert
-import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface IUserDao {
@@ -17,6 +15,6 @@ interface IUserDao {
     suspend fun insertUserData(user: UserData)
 
     @Update
-    suspend fun updateUserDataA(user: UserData)
+    suspend fun updateUserData(user: UserData)
 
 }
