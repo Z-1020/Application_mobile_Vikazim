@@ -6,13 +6,13 @@ import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import androidx.annotation.RequiresPermission
 import androidx.collection.objectFloatMapOf
-import but.projet.projetvikazim.api.APIConnection
+import but.projet.projetvikazim.api.APIFetcher
 import org.json.JSONObject
 
 class UserRepository(private val context: Context) {
 
     private val dao = AppDatabase.getInstance(context).userDao()
-    private val api = APIConnection()
+    private val api = APIFetcher()
 
     @RequiresPermission(Manifest.permission.ACCESS_NETWORK_STATE)
     private fun isOnline(): Boolean {
@@ -48,9 +48,9 @@ class UserRepository(private val context: Context) {
                     password = obj.getString("password"),
                     confirmPassword = obj.getString("confirmPassword"),
                     isModify    = false
-                    )
-                    dao.insertUser(user) // on met à jour le cache local
-                    user
+                )
+                dao.insertUser(user) // on met à jour le cache local
+                user
                 } catch (e: Exception) {
                     dao.getUser(username) // fallback local
                 }

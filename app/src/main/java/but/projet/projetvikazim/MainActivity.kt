@@ -69,7 +69,7 @@ fun Main(modifier: Modifier){
                         ConnectionForm(sessionConnection)
                     }
                 } else {
-                    val profileController = ProfileController()
+                    val profileController = remember { ProfileController() }
                     val profileJsonState = remember { mutableStateOf(JSONObject()) }
                     LaunchedEffect(sessionConnection.apiToken) {
                         if (sessionConnection.apiToken.isNotEmpty()) {
@@ -317,24 +317,12 @@ fun ProfileUpdateForm(
                             updatingProfile.value=false
                         } else {
                             if (result.has("errors")) {
-                                val errors = result.getJSONObject("errors")
-                                var errorString = ""
-                                for(error in errors.keys()){
-                                    val errorText = errors.get(error).toString().replace("[\"","").replace("\",\"",".\n").replace("\"]",".")
-                                    errorString=errorString+errorText+"\n"
-                                }
-                                errorMessage.value = errorString
+                                errorMessage.value = ErrorUtils.parseErrors(result)
                             }
                         }
                     } else {
                         if (result.has("errors")) {
-                            val errors = result.getJSONObject("errors")
-                            var errorString = ""
-                            for(error in errors.keys()){
-                                val errorText = errors.get(error).toString().replace("[\"","").replace("\",\"",".\n").replace("\"]",".")
-                                errorString=errorString+errorText+"\n"
-                            }
-                            errorMessage.value = errorString
+                            errorMessage.value = ErrorUtils.parseErrors(result)
                         }
                     }
                 } catch (e: JSONException) {
@@ -410,13 +398,7 @@ fun PasswordUpdateForm(
                         )
                     }
                     if (result.has("errors")) {
-                        val errors = result.getJSONObject("errors")
-                        var errorString = ""
-                        for(error in errors.keys()){
-                            val errorText = errors.get(error).toString().replace("[\"","").replace("\",\"",".\n").replace("\"]",".")
-                            errorString=errorString+errorText+"\n"
-                        }
-                        errorMessage.value = errorString
+                        errorMessage.value = ErrorUtils.parseErrors(result)
                     } else {
                         updatingProfile.value=false
                     }
@@ -621,13 +603,7 @@ fun signUp(
                     }
                     println(result.toString())
                     if (result.has("errors")) {
-                        val errors = result.getJSONObject("errors")
-                        var errorString = ""
-                        for(error in errors.keys()){
-                            val errorText = errors.get(error).toString().replace("[\"","").replace("\",\"",".\n").replace("\"]",".")
-                            errorString=errorString+errorText+"\n"
-                        }
-                        errorMessage.value = errorString
+                        errorMessage.value = ErrorUtils.parseErrors(result)
                     } else {
                         sessionConnection.apiToken = result.getString("token")
                     }

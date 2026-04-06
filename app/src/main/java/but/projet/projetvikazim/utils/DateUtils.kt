@@ -1,4 +1,5 @@
-package but.projet.projetvikazim
+package but.projet.projetvikazim.utils
+
 import java.text.SimpleDateFormat
 import java.util.Locale
 
